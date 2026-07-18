@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tct_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: thaiculture_manager
+      POSTGRES_USER: tct_admin
+      POSTGRES_PASSWORD: tct_local_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+
+  backend:
+    build:
+      context: ./backend
+    container_name: tct_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://tct_admin:tct_local_password@postgres:5432/thaiculture_manager
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

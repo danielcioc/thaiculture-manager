@@ -1,0 +1,47 @@
+#!/bin/zsh
+set -euo pipefail
+
+mkdir -p ./data/imports
+
+cat > ./data/imports/thaiculture_seed.json <<'JSON'
+{"customers":[{"name":"Alexis Chen + Holger Roessner","email":"Ying6789@hotmail.co.uk","language":"EN"},{"name":"Marina","email":"mausm95@gmail.com","language":"EN"},{"name":"Andreea","email":null,"language":"RO"},{"name":"Catalina Popa","email":"popa.catalina01@gmail.com","language":"RO"},{"name":"Élodie Tyar","email":"tyar.elodie@yahoo.fr","language":"FR"},{"name":"Simon Reichen","email":"GetYourGuide: GYGZGZ5ZL3YQ","language":"FR"}],"bookings":[{"customer_name":"Alexis Chen + Holger Roessner","email":"Ying6789@hotmail.co.uk","language":"EN","tour":"Evening Ayutthaya UNESCO Temples Tour (privat)","tour_date":"2025-12-18","people":"2","price_thb":6500,"price_eur":null,"status":"Confirmat / Efectuat","hotel_location":"SO/ Bangkok Hotel","notes":"Plecare: 17:00 din Rojana Industrial Park | Tel. client: +65 9100 9629"},{"customer_name":"Marina","email":"mausm95@gmail.com","language":"EN","tour":"Whale Tour (nespecificat)","tour_date":null,"people":"4 adulți + 1 copil (7 ani)","price_thb":null,"price_eur":null,"status":"Cerere (fără răspuns)","hotel_location":null,"notes":"Întrebare preț & program | Fără nr. telefon"},{"customer_name":"Andreea","email":null,"language":"RO","tour":"Hua Hin Temple Tour – Cultural Day Trip","tour_date":"2026-02-16","people":"5","price_thb":8900,"price_eur":null,"status":"Facturat / Efectuat","hotel_location":"Hua Hin","notes":"Tur privat, grup 5 persoane | Fără nr. telefon înregistrat"},{"customer_name":"Andreea","email":null,"language":"RO","tour":"Hua Hin – Bangkok Day Trip","tour_date":"2026-02-19","people":"5","price_thb":14000,"price_eur":null,"status":"Facturat / Efectuat","hotel_location":"Hua Hin","notes":"Tur privat, grup 5 persoane | Fără nr. telefon înregistrat"},{"customer_name":"Andreea","email":null,"language":"RO","tour":"Kui Buri National Park – Elephant Watching","tour_date":"2026-02-22","people":"5","price_thb":8900,"price_eur":null,"status":"Facturat / Efectuat","hotel_location":"Hua Hin","notes":"Safari 4x4 + ranger local | Fără nr. telefon înregistrat"},{"customer_name":"Catalina Popa","email":"popa.catalina01@gmail.com","language":"RO","tour":"Ayutthaya UNESCO Full Day Tour (grup)","tour_date":"2026-03-02","people":"1","price_thb":1540,"price_eur":null,"status":"Confirmat / Efectuat","hotel_location":"The Raweekanlaya Bangkok","notes":"Plecare 10:00; taxe intrare 360 THB cash extra | Fără nr. telefon înregistrat"},{"customer_name":"Catalina Popa","email":"popa.catalina01@gmail.com","language":"RO","tour":"Khao Yai National Park – Full Day (grup)","tour_date":"2026-03-03","people":"1","price_thb":2880,"price_eur":null,"status":"Confirmat / Efectuat","hotel_location":"The Raweekanlaya Bangkok","notes":"Plecare 08:00 | Fără nr. telefon înregistrat"},{"customer_name":"Catalina Popa","email":"popa.catalina01@gmail.com","language":"RO","tour":"Kanchanaburi – River Kwai + Erawan Falls (grup)","tour_date":"2026-03-04","people":"1","price_thb":3200,"price_eur":null,"status":"Confirmat / Efectuat","hotel_location":"The Raweekanlaya Bangkok","notes":"Plecare 07:15; costum baie recomandat | Fără nr. telefon înregistrat"},{"customer_name":"Élodie Tyar","email":"tyar.elodie@yahoo.fr","language":"FR","tour":"Amphawa Extended Tour + Wat Samphran (privat)","tour_date":"2026-03-14","people":"3","price_thb":8900,"price_eur":null,"status":"Refuzat (buget)","hotel_location":"Let's Zzz Bangkok","notes":"Ofertă trimisă: 8.900 THB total (2.967/pers); client a refuzat | Fără nr. telefon înregistrat"},{"customer_name":"Simon Reichen","email":"GetYourGuide: GYGZGZ5ZL3YQ","language":"FR","tour":"Ayutthaya Tour (privat – GetYourGuide)","tour_date":"~2026-03-16","people":"2","price_thb":8330,"price_eur":null,"status":"Confirmat / Efectuat","hotel_location":"Bangkok","notes":"Șofer: Non | Tel. șofer: +66 80 616 7489 | Ghid: Ben | Tel. ghid: +66 86 372 9833 | Rezervare GetYourGuide: GYGZGZ5ZL3YQ"}],"invoices":[{"invoice_no":"TCT-TH-2026-0206-001","invoice_date":"2026-02-06","currency":"THB","bill_to":"Catalina Popa","service_location":"Bangkok, Thailand","hotel":"The Raweekanlaya Bangkok","total":7620,"status":"Issued"},{"invoice_no":"TCT-TH-2026-HH-002","invoice_date":"2026-02-06","currency":"THB","bill_to":"Barticel Claudiu / Family","service_location":"Hua Hin / Bangkok, Thailand","hotel":"Amari Hua Hin","total":31800,"status":"Issued"}],"invoice_items":[{"invoice_no":"TCT-TH-2026-0206-001","description":"02 Mar 2026 - Ayutthaya – UNESCO Full Day Tour","qty":1,"unit_thb":1540,"line_total_thb":1540},{"invoice_no":"TCT-TH-2026-0206-001","description":"03 Mar 2026 - Khao Yai National Park - Full Day Tour","qty":1,"unit_thb":2880,"line_total_thb":2880},{"invoice_no":"TCT-TH-2026-0206-001","description":"04 Mar 2026 - Kanchanaburi: River Kwai + Erawan Falls - Full Day Tour","qty":1,"unit_thb":3200,"line_total_thb":3200},{"invoice_no":"TCT-TH-2026-HH-002","description":"Hua Hin Temple Tour – Cultural Day Trip (16 Feb 2026)","qty":1,"unit_thb":8900,"line_total_thb":8900},{"invoice_no":"TCT-TH-2026-HH-002","description":"Hua Hin – Bangkok Day Trip (19 Feb 2026)","qty":1,"unit_thb":14000,"line_total_thb":14000},{"invoice_no":"TCT-TH-2026-HH-002","description":"Kui Buri National Park – Elephant Watching (22 Feb 2026)","qty":1,"unit_thb":8900,"line_total_thb":8900}],"payments":[{"invoice_no":"TCT-TH-2026-0206-001","method":"Bank transfer","account_name":"Pimnipa Buachum","account_no":"6161212177","bank":"Bank of Ayudhya (Krungsri)","swift":"AYUDTHBK","branch":"0616 Khao Ta Lo Soi Branch, Pattaya","status":"Pending confirmation"},{"invoice_no":"TCT-TH-2026-HH-002","method":"Bank transfer","account_name":"Pimnipa Buachum","account_no":"6161212177","bank":"Bank of Ayudhya (Krungsri)","swift":"AYUDTHBK","branch":"0616 Khao Ta Lo Soi Branch, Pattaya","status":"Pending confirmation"}]}
+JSON
+
+cat > ./data/imports/bookings.csv <<'CSV'
+customer_name,email,language,tour,tour_date,people,price_thb,price_eur,status,hotel_location,notes
+Alexis Chen + Holger Roessner,Ying6789@hotmail.co.uk,EN,Evening Ayutthaya UNESCO Temples Tour (privat),2025-12-18,2,6500,,Confirmat / Efectuat,SO/ Bangkok Hotel,Plecare: 17:00 din Rojana Industrial Park | Tel. client: +65 9100 9629
+Marina,mausm95@gmail.com,EN,Whale Tour (nespecificat),,4 adulți + 1 copil (7 ani),,,,Cerere (fără răspuns),,Întrebare preț & program | Fără nr. telefon
+Andreea,,RO,Hua Hin Temple Tour – Cultural Day Trip,2026-02-16,5,8900,,Facturat / Efectuat,Hua Hin,Tur privat, grup 5 persoane | Fără nr. telefon înregistrat
+Andreea,,RO,Hua Hin – Bangkok Day Trip,2026-02-19,5,14000,,Facturat / Efectuat,Hua Hin,Tur privat, grup 5 persoane | Fără nr. telefon înregistrat
+Andreea,,RO,Kui Buri National Park – Elephant Watching,2026-02-22,5,8900,,Facturat / Efectuat,Hua Hin,Safari 4x4 + ranger local | Fără nr. telefon înregistrat
+Catalina Popa,popa.catalina01@gmail.com,RO,Ayutthaya UNESCO Full Day Tour (grup),2026-03-02,1,1540,,Confirmat / Efectuat,The Raweekanlaya Bangkok,Plecare 10:00; taxe intrare 360 THB cash extra | Fără nr. telefon înregistrat
+Catalina Popa,popa.catalina01@gmail.com,RO,Khao Yai National Park – Full Day (grup),2026-03-03,1,2880,,Confirmat / Efectuat,The Raweekanlaya Bangkok,Plecare 08:00 | Fără nr. telefon înregistrat
+Catalina Popa,popa.catalina01@gmail.com,RO,Kanchanaburi – River Kwai + Erawan Falls (grup),2026-03-04,1,3200,,Confirmat / Efectuat,The Raweekanlaya Bangkok,Plecare 07:15; costum baie recomandat | Fără nr. telefon înregistrat
+Élodie Tyar,tyar.elodie@yahoo.fr,FR,Amphawa Extended Tour + Wat Samphran (privat),2026-03-14,3,8900,,Refuzat (buget),Let's Zzz Bangkok,Ofertă trimisă: 8.900 THB total (2.967/pers); client a refuzat | Fără nr. telefon înregistrat
+Simon Reichen,GetYourGuide: GYGZGZ5ZL3YQ,FR,Ayutthaya Tour (privat – GetYourGuide),~2026-03-16,2,8330,,Confirmat / Efectuat,Bangkok,Șofer: Non | Tel. șofer: +66 80 616 7489 | Ghid: Ben | Tel. ghid: +66 86 372 9833 | Rezervare GetYourGuide: GYGZGZ5ZL3YQ
+CSV
+
+cat > ./data/imports/invoices.csv <<'CSV'
+invoice_no,invoice_date,currency,bill_to,service_location,hotel,total,status
+TCT-TH-2026-0206-001,2026-02-06,THB,Catalina Popa,Bangkok, Thailand,The Raweekanlaya Bangkok,7620,Issued
+TCT-TH-2026-HH-002,2026-02-06,THB,Barticel Claudiu / Family,Hua Hin / Bangkok, Thailand,Amari Hua Hin,31800,Issued
+CSV
+
+cat > ./data/imports/invoice_items.csv <<'CSV'
+invoice_no,description,qty,unit_thb,line_total_thb
+TCT-TH-2026-0206-001,02 Mar 2026 - Ayutthaya – UNESCO Full Day Tour,1,1540,1540
+TCT-TH-2026-0206-001,03 Mar 2026 - Khao Yai National Park - Full Day Tour,1,2880,2880
+TCT-TH-2026-0206-001,04 Mar 2026 - Kanchanaburi: River Kwai + Erawan Falls - Full Day Tour,1,3200,3200
+TCT-TH-2026-HH-002,Hua Hin Temple Tour – Cultural Day Trip (16 Feb 2026),1,8900,8900
+TCT-TH-2026-HH-002,Hua Hin – Bangkok Day Trip (19 Feb 2026),1,14000,14000
+TCT-TH-2026-HH-002,Kui Buri National Park – Elephant Watching (22 Feb 2026),1,8900,8900
+CSV
+
+cat > ./data/imports/payments.csv <<'CSV'
+invoice_no,method,account_name,account_no,bank,swift,branch,status
+TCT-TH-2026-0206-001,Bank transfer,Pimnipa Buachum,6161212177,Bank of Ayudhya (Krungsri),AYUDTHBK,0616 Khao Ta Lo Soi Branch, Pattaya,Pending confirmation
+TCT-TH-2026-HH-002,Bank transfer,Pimnipa Buachum,6161212177,Bank of Ayudhya (Krungsri),AYUDTHBK,0616 Khao Ta Lo Soi Branch, Pattaya,Pending confirmation
+CSV
+
+echo 'created ./data/imports files'
+ls -lah ./data/imports

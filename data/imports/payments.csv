@@ -1,0 +1,3 @@
+invoice_no,method,account_name,account_no,bank,swift,branch,status
+TCT-TH-2026-0206-001,Bank transfer,Pimnipa Buachum,6161212177,Bank of Ayudhya (Krungsri),AYUDTHBK,0616 Khao Ta Lo Soi Branch, Pattaya,Pending confirmation
+TCT-TH-2026-HH-002,Bank transfer,Pimnipa Buachum,6161212177,Bank of Ayudhya (Krungsri),AYUDTHBK,0616 Khao Ta Lo Soi Branch, Pattaya,Pending confirmation
