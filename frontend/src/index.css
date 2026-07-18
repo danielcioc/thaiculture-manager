@@ -1538,6 +1538,23 @@ p {
   margin-top: 4px;
 }
 
+.mobile-nav-item {
+  min-height: 40px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.mobile-nav-item.active {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: rgba(59, 130, 246, 0.22);
+  color: #eff6ff;
+}
+
 @media (max-width: 640px) {
   .app-header {
     gap: 12px;
@@ -1555,34 +1572,6 @@ p {
   .mobile-nav-trigger {
     display: inline-flex;
     width: 100%;
-  }
-
-  .mobile-nav-drawer {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.mobile-nav-item {
-    min-height: 40px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(96, 165, 250, 0.14);
-    background: rgba(15, 23, 42, 0.6);
-    color: #cbd5e1;
-    font-size: 0.88rem;
-    text-align: left;
-  }
-
-  .mobile-nav-item.active {
-    border-color: rgba(96, 165, 250, 0.32);
-    background: rgba(59, 130, 246, 0.22);
-    color: #eff6ff;
-  }
-}
-
-@media (max-width: 640px) {
-  .mobile-nav-trigger {
     min-height: 38px;
     padding: 8px 12px;
     border-radius: 14px;
@@ -1590,6 +1579,8 @@ p {
   }
 
   .mobile-nav-drawer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     padding: 8px;
     border-radius: 16px;
