@@ -109,11 +109,10 @@ function App() {
       .catch((e) => setError(e.message))
       .finally(() => setLoadingLocations(false));
 
-    setLoadingInvoices(false);
-//     getInvoices()
-//       .then((data) => setInvoices(data as InvoicesResponse))
-//       .catch((e) => setError(e.message))
-//       .finally(() => setLoadingInvoices(false));
+    getInvoices()
+      .then((data) => setInvoices(data as InvoicesResponse))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoadingInvoices(false));
   }, []);
 
   useEffect(() => {
@@ -277,10 +276,10 @@ function App() {
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
           </button>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => goToView('invoices')}>
             <span>Total Invoices</span>
             <strong>{invoices?.count ?? 0}</strong>
-          </div>
+          </button>
         </div>
       </>
     );
