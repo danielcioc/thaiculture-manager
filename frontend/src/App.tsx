@@ -160,6 +160,7 @@ function App() {
   const confirmedBookings = bookings.items.filter(
     (item) => item.status === 'Confirmed',
   ).length;
+  const unconfirmedBookings = totalBookings - confirmedBookings;
   const totalGuests = bookings.items.reduce(
     (sum, item) => sum + Number(item.total_guests || 0),
     0,
@@ -251,6 +252,11 @@ function App() {
           <div className="card">
             <span>Confirmed</span>
             <strong>{confirmedBookings}</strong>
+          </div>
+
+          <div className="card">
+            <span>Unconfirmed</span>
+            <strong>{unconfirmedBookings}</strong>
           </div>
 
           <div className="card">
