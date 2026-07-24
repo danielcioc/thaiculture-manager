@@ -158,6 +158,28 @@ p {
   justify-content: space-between;
 }
 
+.card-button {
+  text-align: left;
+  width: 100%;
+  appearance: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.card-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.card-button:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.9);
+  outline-offset: 3px;
+}
+
+.card-button span,
+.card-button strong {
+  pointer-events: none;
+}
+
 .panel {
   padding: 22px 20px;
 }

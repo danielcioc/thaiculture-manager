@@ -244,20 +244,20 @@ function App() {
     return (
       <>
         <div className="grid">
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
             <span>Total Bookings</span>
             <strong>{totalBookings}</strong>
-          </div>
+          </button>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
             <span>Confirmed</span>
             <strong>{confirmedBookings}</strong>
-          </div>
+          </button>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
             <span>Unconfirmed</span>
             <strong>{unconfirmedBookings}</strong>
-          </div>
+          </button>
 
           <div className="card">
             <span>Total Guests</span>
@@ -269,10 +269,10 @@ function App() {
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
           </div>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => setView('invoices')}>
             <span>Total Invoices</span>
             <strong>{invoices?.count ?? 0}</strong>
-          </div>
+          </button>
         </div>
       </>
     );
