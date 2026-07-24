@@ -244,17 +244,29 @@ function App() {
     return (
       <>
         <div className="grid">
-          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
+          <button type="button" className="card card-button" onClick={() => {
+              setSelectedCode(null);
+              setSelectedInvoiceNo(null);
+              setView('bookings');
+            }}>
             <span>Total Bookings</span>
             <strong>{totalBookings}</strong>
           </button>
 
-          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
+          <button type="button" className="card card-button" onClick={() => {
+              setSelectedCode(null);
+              setSelectedInvoiceNo(null);
+              setView('bookings');
+            }}>
             <span>Confirmed</span>
             <strong>{confirmedBookings}</strong>
           </button>
 
-          <button type="button" className="card card-button" onClick={() => setView('bookings')}>
+          <button type="button" className="card card-button" onClick={() => {
+              setSelectedCode(null);
+              setSelectedInvoiceNo(null);
+              setView('bookings');
+            }}>
             <span>Unconfirmed</span>
             <strong>{unconfirmedBookings}</strong>
           </button>
@@ -269,7 +281,11 @@ function App() {
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
           </div>
 
-          <button type="button" className="card card-button" onClick={() => setView('invoices')}>
+          <button type="button" className="card card-button" onClick={() => {
+              setSelectedCode(null);
+              setSelectedInvoiceNo(null);
+              setView('invoices');
+            }}>
             <span>Total Invoices</span>
             <strong>{invoices?.count ?? 0}</strong>
           </button>
