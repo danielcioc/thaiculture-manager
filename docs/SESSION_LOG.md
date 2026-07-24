@@ -31,3 +31,9 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Repository pushed to GitHub via SSH
 - Local backend and frontend confirmed working
 - UI smoke test completed successfully
+
+## 2026-07-24 checkpoint
+- Repository pushed to GitHub via SSH
+- Local backend and frontend confirmed working
+- Booking detail and invoice detail validated
+- UI smoke test completed successfully
