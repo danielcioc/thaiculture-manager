@@ -171,6 +171,13 @@ function App() {
   );
   const currency = bookings.items[0]?.currency ?? 'THB';
 
+  const goToView = (nextView: View) => {
+    setSelectedCode(null);
+    setSelectedInvoiceNo(null);
+    setView(nextView);
+    setMobileNavOpen(false);
+  };
+
   const renderContent = () => {
     if (view === 'bookings') {
       return !isDetailView ? (
@@ -244,29 +251,17 @@ function App() {
     return (
       <>
         <div className="grid">
-          <button type="button" className="card card-button" onClick={() => {
-              setSelectedCode(null);
-              setSelectedInvoiceNo(null);
-              setView('bookings');
-            }}>
+          <button type="button" className="card card-button" onClick={() => goToView('bookings')}>
             <span>Total Bookings</span>
             <strong>{totalBookings}</strong>
           </button>
 
-          <button type="button" className="card card-button" onClick={() => {
-              setSelectedCode(null);
-              setSelectedInvoiceNo(null);
-              setView('bookings');
-            }}>
+          <button type="button" className="card card-button" onClick={() => goToView('bookings')}>
             <span>Confirmed</span>
             <strong>{confirmedBookings}</strong>
           </button>
 
-          <button type="button" className="card card-button" onClick={() => {
-              setSelectedCode(null);
-              setSelectedInvoiceNo(null);
-              setView('bookings');
-            }}>
+          <button type="button" className="card card-button" onClick={() => goToView('bookings')}>
             <span>Unconfirmed</span>
             <strong>{unconfirmedBookings}</strong>
           </button>
@@ -281,11 +276,7 @@ function App() {
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
           </div>
 
-          <button type="button" className="card card-button" onClick={() => {
-              setSelectedCode(null);
-              setSelectedInvoiceNo(null);
-              setView('invoices');
-            }}>
+          <button type="button" className="card card-button" onClick={() => goToView('invoices')}>
             <span>Total Invoices</span>
             <strong>{invoices?.count ?? 0}</strong>
           </button>
@@ -330,12 +321,7 @@ function App() {
               key={item}
               type="button"
               className={view === item ? 'tab active' : 'tab'}
-              onClick={() => {
-                setView(item);
-                setSelectedCode(null);
-                setSelectedInvoiceNo(null);
-                setMobileNavOpen(false);
-              }}
+              onClick={() => goToView(item)}
             >
               {item[0].toUpperCase() + item.slice(1)}
             </button>
