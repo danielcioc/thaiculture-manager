@@ -271,10 +271,10 @@ function App() {
             <strong>{totalGuests}</strong>
           </div>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => goToView('payments')}>
             <span>Total Revenue</span>
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
-          </div>
+          </button>
 
           <button type="button" className="card card-button" onClick={() => goToView('invoices')}>
             <span>Total Invoices</span>
