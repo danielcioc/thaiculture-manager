@@ -26,3 +26,8 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Backend responding locally
 - Frontend responding locally
 - Main sections verified in UI
+
+## 2026-07-24 checkpoint
+- Repository pushed to GitHub via SSH
+- Local backend and frontend confirmed working
+- UI smoke test completed successfully
