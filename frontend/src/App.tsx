@@ -277,10 +277,10 @@ function App() {
             <strong>{formatCurrency(totalRevenue, currency)}</strong>
           </button>
 
-          <button type="button" className="card card-button" onClick={() => goToView('invoices')}>
+          <div className="card">
             <span>Total Invoices</span>
             <strong>{invoices?.count ?? 0}</strong>
-          </button>
+          </div>
         </div>
       </>
     );
