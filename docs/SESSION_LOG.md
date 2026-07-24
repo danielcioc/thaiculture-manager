@@ -20,3 +20,9 @@
 
 ### Action decided
 Create persistent documentation files inside docs/ so future sessions can reconstruct state quickly.
+
+## 2026-07-24 validation
+- Docker stack confirmed running
+- Backend responding locally
+- Frontend responding locally
+- Main sections verified in UI
