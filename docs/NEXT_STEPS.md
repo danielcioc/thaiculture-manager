@@ -11,13 +11,9 @@ Recover full project continuity and continue from the actual current state, not 
 - Frontend code is already connected to backend endpoints
 
 ## Recommended next priorities
-1. Run frontend locally and confirm UI works end-to-end against backend.
-2. Verify all tabs load correctly: dashboard, bookings, customers, tours, assignments, payments, guides, drivers, locations.
-3. Decide whether the next real task is:
-- importing real Excel data
-- expanding seed/demo data
-- improving UI/UX
-- adding missing backend features
+1. Add booking_financial_status to the backend booking full-detail response so the API matches the canonical financial workflow.
+2. Align frontend booking detail types and UI with the updated backend financial status contract.
+3. Re-test booking detail end-to-end with the seeded booking TCT-2026-000001.
 
 ## First commands for next session
 cd ~/Projects/thaiculture-manager

@@ -71,3 +71,8 @@ Primary demo booking:
 ## Current interpretation of project stage
 Project is not at the schema-design stage anymore.
 It is already an MVP-level internal operations product with a working local stack, real API routes, and seeded test data.
+
+## Current validated booking detail state
+The backend full booking detail endpoint was validated against the real seeded booking TCT-2026-000001.
+The response currently returns booking, payments, payment_summary, assignments, and operations_summary correctly on real data.
+A contract gap remains: payment_summary currently exposes payment_status but does not yet expose booking_financial_status required by the canonical financial workflow.

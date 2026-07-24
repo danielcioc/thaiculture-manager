@@ -37,3 +37,10 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Local backend and frontend confirmed working
 - Booking detail and invoice detail validated
 - UI smoke test completed successfully
+
+## 2026-07-25 checkpoint
+- Backend full booking detail endpoint validated with real seeded booking code TCT-2026-000001
+- API response confirmed booking, payments, payment_summary, assignments, and operations_summary are returned correctly
+- Payment summary values confirmed on real data: selling_price 14900 THB, paid_amount 3000 THB, pending_amount 11900 THB, requested_amount 14900 THB, outstanding_amount 11900 THB
+- Current contract gap identified: payment_summary exposes payment_status but does not yet expose booking_financial_status
+- Next implementation target confirmed: add booking_financial_status to backend booking detail response and then align frontend types and UI
