@@ -109,10 +109,11 @@ function App() {
       .catch((e) => setError(e.message))
       .finally(() => setLoadingLocations(false));
 
-    getInvoices()
-      .then((data) => setInvoices(data as InvoicesResponse))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoadingInvoices(false));
+    setLoadingInvoices(false);
+//     getInvoices()
+//       .then((data) => setInvoices(data as InvoicesResponse))
+//       .catch((e) => setError(e.message))
+//       .finally(() => setLoadingInvoices(false));
   }, []);
 
   useEffect(() => {
@@ -266,10 +267,10 @@ function App() {
             <strong>{unconfirmedBookings}</strong>
           </button>
 
-          <div className="card">
+          <button type="button" className="card card-button" onClick={() => goToView('bookings')}>
             <span>Total Guests</span>
             <strong>{totalGuests}</strong>
-          </div>
+          </button>
 
           <button type="button" className="card card-button" onClick={() => goToView('payments')}>
             <span>Total Revenue</span>
