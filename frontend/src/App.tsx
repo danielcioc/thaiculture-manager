@@ -281,6 +281,13 @@ function App() {
               {isDetailView ? 'Booking Detail' : isInvoiceDetailView ? 'Invoice Detail' : 'Operations Dashboard'}
             </p>
             <h1>ThaiCulture Manager</h1>
+            <p className="section-subtitle">
+              {isDetailView
+                ? selectedCode
+                : isInvoiceDetailView
+                  ? selectedInvoiceNo
+                  : view[0].toUpperCase() + view.slice(1)}
+            </p>
           </div>
 
           <button
