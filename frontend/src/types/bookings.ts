@@ -78,6 +78,7 @@ export type BookingDetailResponse = {
     outstanding_amount: number;
     remaining_unrequested_amount: number;
     payment_status: string;
+    booking_financial_status: string;
     currency: string;
   };
   assignments: Assignment[];

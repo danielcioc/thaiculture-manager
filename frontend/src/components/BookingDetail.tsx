@@ -115,7 +115,12 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
                     <h2 style={{ margin: 0 }}>Payments</h2>
                     <p className="section-subtitle">{payments.length} items</p>
                   </div>
-                  <span className={`meta-pill ${getStatusClass(payment_summary.payment_status)}`}>{payment_summary.payment_status}</span>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className={`meta-pill ${getStatusClass(payment_summary.payment_status)}`}>{payment_summary.payment_status}</span>
+                    <span className={`meta-pill ${getStatusClass(payment_summary.booking_financial_status)}`}>
+                      {formatTitle(payment_summary.booking_financial_status)}
+                    </span>
+                  </div>
                 </div>
 
                 {payments.length === 0 ? (

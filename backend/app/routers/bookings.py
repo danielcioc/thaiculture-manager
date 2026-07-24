@@ -9,6 +9,24 @@ from app.database import get_connection
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
+
+def compute_booking_financial_status(
+    selling_price,
+    paid_amount,
+    pending_amount,
+    requested_amount,
+):
+    if paid_amount >= selling_price and selling_price > 0:
+        return "paid"
+    if paid_amount > 0 and paid_amount < selling_price:
+        if pending_amount > 0 or requested_amount > paid_amount:
+            return "partiallypaid"
+        return "depositpaid"
+    if paid_amount <= 0 and pending_amount > 0:
+        return "depositrequested"
+    return "unpaid"
+
+
 class BookingCreate(BaseModel):
     booking_code: str = Field(..., examples=["TCT-2026-000001"])
     status: str = Field(default="Inquiry")
@@ -191,6 +209,20 @@ def get_booking_payment_summary(booking_code: str):
         payment_status = "Payment Requested"
     else:
         payment_status = "Unpaid"
+
+    booking_financial_status = compute_booking_financial_status(
+        selling_price=selling_price,
+        paid_amount=paid_amount,
+        pending_amount=pending_amount,
+        requested_amount=requested_amount,
+    )
+
+    booking_financial_status = compute_booking_financial_status(
+        selling_price=selling_price,
+        paid_amount=paid_amount,
+        pending_amount=pending_amount,
+        requested_amount=requested_amount,
+    )
 
     return {
         "booking_code": booking_data["booking_code"],
@@ -521,6 +553,7 @@ def get_booking_full_detail(booking_code: str):
             "outstanding_amount": outstanding_amount,
             "remaining_unrequested_amount": remaining_unrequested_amount,
             "payment_status": payment_status,
+            "booking_financial_status": booking_financial_status,
             "currency": booking_data["currency"],
         },
         "assignments": assignments,
