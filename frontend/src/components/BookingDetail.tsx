@@ -2,6 +2,14 @@ import type { BookingDetailResponse } from '../types/bookings';
 import { formatCurrency, formatDate, formatDateTime, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
 
+const bookingFinancialStatusLabel: Record<string, string> = {
+  unpaid: 'Unpaid',
+  depositrequested: 'Deposit Requested',
+  depositpaid: 'Deposit Paid',
+  partiallypaid: 'Partially Paid',
+  paid: 'Paid',
+};
+
 type BookingDetailProps = {
   data: BookingDetailResponse;
   onBack: () => void;
@@ -10,6 +18,9 @@ type BookingDetailProps = {
 
 function formatTitle(value: string | null | undefined) {
   if (!value) return '-';
+
+  const normalized = value.toLowerCase().replace(/[_\s-]+/g, '');
+  if (bookingFinancialStatusLabel[normalized]) return bookingFinancialStatusLabel[normalized];
 
   return value
     .split(/[_\s-]+/)
