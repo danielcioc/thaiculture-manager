@@ -11,9 +11,9 @@ Recover full project continuity and continue from the actual current state, not 
 - Frontend code is already connected to backend endpoints
 
 ## Recommended next priorities
-1. Add booking_financial_status to the backend booking full-detail response so the API matches the canonical financial workflow.
-2. Align frontend booking detail types and UI with the updated backend financial status contract.
-3. Re-test booking detail end-to-end with the seeded booking TCT-2026-000001.
+1. Refine the canonical booking-level financial status logic so current computed values map cleanly to the intended business meanings (unpaid, depositrequested, depositpaid, partiallypaid, paid, overdue).
+2. Review booking detail wording and badge presentation so payment_status and booking_financial_status remain clearly distinct in the UI.
+3. Continue the financial model audit against BOOKING_FINANCIAL_WORKFLOW_V1.md, including deposit, balance, proforma, and invoice behavior.
 
 ## First commands for next session
 cd ~/Projects/thaiculture-manager

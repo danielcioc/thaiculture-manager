@@ -74,5 +74,6 @@ It is already an MVP-level internal operations product with a working local stac
 
 ## Current validated booking detail state
 The backend full booking detail endpoint was validated against the real seeded booking TCT-2026-000001.
-The response currently returns booking, payments, payment_summary, assignments, and operations_summary correctly on real data.
-A contract gap remains: payment_summary currently exposes payment_status but does not yet expose booking_financial_status required by the canonical financial workflow.
+The response returns booking, payments, payment_summary, assignments, and operations_summary correctly on real data.
+The payment_summary contract now includes both payment_status and booking_financial_status.
+The booking detail UI was re-tested end-to-end and displays the booking-level financial status correctly for TCT-2026-000001.

@@ -44,3 +44,11 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Payment summary values confirmed on real data: selling_price 14900 THB, paid_amount 3000 THB, pending_amount 11900 THB, requested_amount 14900 THB, outstanding_amount 11900 THB
 - Current contract gap identified: payment_summary exposes payment_status but does not yet expose booking_financial_status
 - Next implementation target confirmed: add booking_financial_status to backend booking detail response and then align frontend types and UI
+
+## 2026-07-25 checkpoint
+- Implemented booking_financial_status in backend full booking detail response
+- Rebuilt backend container image so runtime matched the updated source code
+- Validated GET /bookings/TCT-2026-000001/full returns payment_summary.booking_financial_status = partiallypaid
+- Confirmed frontend booking detail renders both payment_status and booking_financial_status badges
+- Created git commit: 0e71cb2 Add booking financial status to booking detail response
+- Next focus: refine canonical booking-level financial status logic and align UI wording with business meaning
