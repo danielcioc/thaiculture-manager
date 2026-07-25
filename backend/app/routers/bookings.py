@@ -210,6 +210,15 @@ def get_booking_payment_summary(booking_code: str):
     else:
         payment_status = "Unpaid"
 
+    if paid_amount >= selling_price and selling_price > 0:
+        booking_financial_status = "paid"
+    elif paid_amount > 0:
+        booking_financial_status = "partiallypaid"
+    elif requested_amount > 0 or pending_amount > 0:
+        booking_financial_status = "depositrequested"
+    else:
+        booking_financial_status = "unpaid"
+
     booking_financial_status = compute_booking_financial_status(
         selling_price=selling_price,
         paid_amount=paid_amount,
@@ -530,6 +539,15 @@ def get_booking_full_detail(booking_code: str):
         payment_status = "Payment Requested"
     else:
         payment_status = "Unpaid"
+
+    if paid_amount >= selling_price and selling_price > 0:
+        booking_financial_status = "paid"
+    elif paid_amount > 0:
+        booking_financial_status = "partiallypaid"
+    elif requested_amount > 0 or pending_amount > 0:
+        booking_financial_status = "depositrequested"
+    else:
+        booking_financial_status = "unpaid"
 
     guide_cost = cost_totals[0]
     driver_cost = cost_totals[1]
