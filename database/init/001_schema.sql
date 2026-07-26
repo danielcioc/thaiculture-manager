@@ -169,8 +169,10 @@ CREATE TABLE payments (
   method varchar(40) NOT NULL,
   status varchar(40) NOT NULL,
   paid_at timestamptz,
+  due_at timestamptz,
   received_by uuid REFERENCES users(id),
-  reference varchar(255)
+  reference varchar(255),
+  notes text
 );
 
 CREATE TABLE costs (

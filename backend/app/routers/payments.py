@@ -17,7 +17,9 @@ class PaymentCreate(BaseModel):
     method: str = Field(..., examples=["Thai QR"])
     status: str = Field(default="Pending", examples=["Pending"])
     paid_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
     reference: Optional[str] = None
+    notes: Optional[str] = None
 
 
 @router.get("")
@@ -35,7 +37,9 @@ def list_payments():
                     p.method,
                     p.status,
                     p.paid_at,
-                    p.reference
+                    p.due_at,
+                    p.reference,
+                    p.notes
                 FROM payments p
                 LEFT JOIN bookings b ON b.id = p.booking_id
                 LEFT JOIN customers c ON c.id = b.customer_id
@@ -64,7 +68,9 @@ def create_payment(payload: PaymentCreate):
                         method,
                         status,
                         paid_at,
-                        reference
+                        due_at,
+                        reference,
+                        notes
                     )
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING
@@ -112,7 +118,9 @@ def list_payments_for_booking(booking_code: str):
                     p.method,
                     p.status,
                     p.paid_at,
-                    p.reference
+                    p.due_at,
+                    p.reference,
+                    p.notes
                 FROM payments p
                 LEFT JOIN bookings b ON b.id = p.booking_id
                 LEFT JOIN customers c ON c.id = b.customer_id
@@ -133,7 +141,9 @@ def list_payments_for_booking(booking_code: str):
 class PaymentStatusUpdate(BaseModel):
     status: str = Field(..., examples=["Paid"])
     paid_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
     reference: Optional[str] = None
+    notes: Optional[str] = None
 
 
 @router.patch("/{payment_id}/status")
@@ -146,7 +156,9 @@ def update_payment_status(payment_id: UUID, payload: PaymentStatusUpdate):
                     SET
                         status = %s,
                         paid_at = COALESCE(%s, paid_at),
-                        reference = COALESCE(%s, reference)
+                        due_at = COALESCE(%s, due_at),
+                        reference = COALESCE(%s, reference),
+                        notes = COALESCE(%s, notes)
                     WHERE id = %s
                     RETURNING
                         id,
@@ -160,7 +172,9 @@ def update_payment_status(payment_id: UUID, payload: PaymentStatusUpdate):
                 """, (
                     payload.status,
                     payload.paid_at,
+                    payload.due_at,
                     payload.reference,
+                    payload.notes,
                     payment_id,
                 ))
 
