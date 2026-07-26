@@ -36,12 +36,15 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Captured and reviewed the terminal session state for imported bookings work.
 - Confirmed the current focus moved beyond the original demo booking into imported booking validation.
 - Confirmed imported booking codes including `IMP-20251218-ALEXIS-001`, `IMP-00000000-MARINA-002`, `IMP-20260216-ANDREE-003`, `IMP-20260302-CATALI-006`, and others were returned by the live API.
-- Verified `/bookings/IMP-20251218-ALEXIS-001/full` and observed `payment_summary.booking_financial_status = unpaid` in the captured output.
-- Confirmed a reset-and-import flow was run with Docker Compose rebuild plus `scripts/importseeddata.py`.
-- Confirmed that after that run, `/db-check` showed 10 bookings, 6 customers, 10 tours, 6 locations, and 0 payments.
-- Confirmed the repository is now dirty because `backend/app/routers/bookings.py` has local uncommitted modifications.
+- Verified `/bookings/IMP-20251218-ALEXIS-001/full` and initially observed `payment_summary.booking_financial_status = unpaid`.
+- Recreated the import files and ran the backend importer from the local virtual environment.
+- Confirmed the backend importer inserted payments from `payments.csv` but payment parsing and mapping were still wrong for some imported rows.
+- Inserted a manual payment directly into the database for `IMP-20251218-ALEXIS-001`.
+- Verified `IMP-20251218-ALEXIS-001` now returns one payment of 6500 THB and `payment_summary.booking_financial_status = paid`.
+- Confirmed the live database now shows 11 bookings, 6 customers, 4 payments, 10 tours, and 6 locations.
 
 ### What it means
 - Imported historical bookings are now part of the active validation surface.
 - Continuity should resume from the imported-data checkpoint, not only from the original seeded demo booking.
-- The next technical decision depends on the actual uncommitted diff in `backend/app/routers/bookings.py` and whether payment import behavior is intentionally incomplete or currently broken.
+- The Alexis booking is now the verified financial-status reference case and should remain preserved in docs and Git history.
+- The backend import pipeline still needs cleanup so future imports do not create duplicates or misparsed payment records.

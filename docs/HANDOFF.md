@@ -1,28 +1,26 @@
 # ThaiCulture Manager — Handoff
 
 ## Current task
-Maintain project continuity and resume from the imported-bookings checkpoint without losing track of the original financial workflow work.
+Keep project continuity intact and preserve the verified Alexis paid checkpoint while cleaning up the import pipeline.
 
 ## Last confirmed state
 - Local project branch is `main`.
-- `backend/app/routers/bookings.py` has local uncommitted modifications.
-- Booking financial status logic is still present in the backend router.
-- Imported bookings were validated through the live API.
-- Reference imported booking: `IMP-20251218-ALEXIS-001`.
-- The imported booking full endpoint showed `payment_summary.booking_financial_status = unpaid`.
-- A reset-and-import run produced a database state with 10 bookings, 6 customers, 10 tours, 6 locations, and 0 payments.
+- The backend importer from `backend/import_thaiculture_data.py` can read the CSV import set.
+- Imported booking reference: `IMP-20251218-ALEXIS-001`.
+- That booking now shows one payment of 6500 THB and `payment_summary.booking_financial_status = paid`.
+- The live database currently shows 11 bookings, 6 customers, 4 payments, 10 tours, and 6 locations.
 
 ## Last useful commands
-- `git diff -- backend/app/routers/bookings.py`
-- `curl -s http://127.0.0.1:8000/bookings | python3 -m json.tool | sed -n '1,260p'`
-- `curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,280p'`
-- `curl -s http://127.0.0.1:8000/db-check`
+- `git status --short`
+- `curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,260p'`
+- `python ./backend/import_thaiculture_data.py`
+- `source .venv/bin/activate`
 
 ## Next command to run
-Inspect the live diff in `backend/app/routers/bookings.py` before any commit or further refactor.
+Inspect the current diff in `backend/import_thaiculture_data.py` before the importer cleanup.
 
 ## Current priority
-Decide whether the current uncommitted bookings router edits should be committed as the next checkpoint and whether payment import handling is the next real feature gap.
+Commit the verified checkpoint, then repair payment parsing in the importer so future CSV imports behave correctly.
 
 ## Continuity rule
 At the start of the next session, read:

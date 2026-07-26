@@ -1,3 +1,4 @@
 invoice_no,invoice_date,currency,bill_to,service_location,hotel,total,status
 TCT-TH-2026-0206-001,2026-02-06,THB,Catalina Popa,Bangkok, Thailand,The Raweekanlaya Bangkok,7620,Issued
 TCT-TH-2026-HH-002,2026-02-06,THB,Barticel Claudiu / Family,Hua Hin / Bangkok, Thailand,Amari Hua Hin,31800,Issued
+TCT-TH-2025-1218-001,2025-12-18,THB,Alexis Chen Holger Roessner,Bangkok, Thailand,SO Bangkok Hotel,6500,Issued

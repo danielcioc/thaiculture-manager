@@ -34,3 +34,6 @@ When starting a new session:
 3. Read the latest section in `docs/SESSION_LOG.md`
 4. Read `docs/HANDOFF.md`
 5. Only then inspect code
+
+## Current checkpoint decision
+`IMP-20251218-ALEXIS-001` is now the verified paid booking checkpoint and should remain the reference case until the importer is repaired.

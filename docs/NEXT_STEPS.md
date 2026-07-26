@@ -1,21 +1,20 @@
 # ThaiCulture Manager — Next Steps
 
 ## Immediate goal
-Continue from the imported-bookings validation state and decide whether the current backend router change should be preserved, completed, or reverted.
+Preserve the Alexis paid checkpoint and clean up the import pipeline so payments are imported correctly without duplicates or misparsed fields.
 
 ## Recommended next priorities
-1. Inspect the exact uncommitted diff in `backend/app/routers/bookings.py`.
-2. Re-run the key API checks for imported bookings, especially `/bookings` and `/bookings/{code}/full`.
-3. Decide whether imported payments should remain absent after the reset-and-import run or whether payment import logic must be fixed next.
-4. Reconcile the imported flow with the canonical booking financial workflow definitions in `docs/BOOKING_FINANCIAL_WORKFLOW_V1.md`.
+1. Inspect the current diff in `backend/import_thaiculture_data.py`.
+2. Patch payment parsing so `payments.csv` maps correctly into `payments`.
+3. Remove duplicate or misparsed payments created during earlier import attempts.
+4. Re-run the import pipeline from a clean state and confirm imported bookings still resolve correctly.
+5. Keep `IMP-20251218-ALEXIS-001` as the verified payment-status checkpoint.
 
-## First commands for next session
+## Useful verification commands
 cd ~/Projects/thaiculture-manager
-git diff -- backend/app/routers/bookings.py
-curl -s http://127.0.0.1:8000/bookings | python3 -m json.tool | sed -n '1,260p'
-curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,280p'
-curl -s http://127.0.0.1:8000/db-check
+source .venv/bin/activate
+git status --short
+curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,260p'
 
 ## Important note
-Do not assume the seed-demo reference booking is the only validation path anymore.
-The imported dataset is now part of the active continuity state.
+Do not rerun the bootstrap script without first confirming whether it rewrites the import files.
