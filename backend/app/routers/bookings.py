@@ -210,22 +210,6 @@ def get_booking_payment_summary(booking_code: str):
     else:
         payment_status = "Unpaid"
 
-    if paid_amount >= selling_price and selling_price > 0:
-        booking_financial_status = "paid"
-    elif paid_amount > 0:
-        booking_financial_status = "partiallypaid"
-    elif requested_amount > 0 or pending_amount > 0:
-        booking_financial_status = "depositrequested"
-    else:
-        booking_financial_status = "unpaid"
-
-    booking_financial_status = compute_booking_financial_status(
-        selling_price=selling_price,
-        paid_amount=paid_amount,
-        pending_amount=pending_amount,
-        requested_amount=requested_amount,
-    )
-
     booking_financial_status = compute_booking_financial_status(
         selling_price=selling_price,
         paid_amount=paid_amount,
@@ -243,6 +227,7 @@ def get_booking_payment_summary(booking_code: str):
         "outstanding_amount": outstanding_amount,
         "remaining_unrequested_amount": remaining_unrequested_amount,
         "payment_status": payment_status,
+        "booking_financial_status": booking_financial_status,
         "currency": booking_data["currency"],
     }
 
