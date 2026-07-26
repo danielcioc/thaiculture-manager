@@ -1,35 +1,33 @@
 # ThaiCulture Manager — Handoff
 
 ## Current task
-Maintain project continuity so future sessions can resume without re-discovering the current state.
+Maintain project continuity and resume from the imported-bookings checkpoint without losing track of the original financial workflow work.
 
 ## Last confirmed state
-- Local Docker stack works
-- Backend responds on /health
-- DB responds on /db-check
-- Seed/demo data exists
-- Frontend is already connected to backend endpoints
-- Reference booking exists: TCT-2026-000001
+- Local project branch is `main`.
+- `backend/app/routers/bookings.py` has local uncommitted modifications.
+- Booking financial status logic is still present in the backend router.
+- Imported bookings were validated through the live API.
+- Reference imported booking: `IMP-20251218-ALEXIS-001`.
+- The imported booking full endpoint showed `payment_summary.booking_financial_status = unpaid`.
+- A reset-and-import run produced a database state with 10 bookings, 6 customers, 10 tours, 6 locations, and 0 payments.
 
 ## Last useful commands
-- docker compose up -d
-- curl http://localhost:8000/health
-- curl http://localhost:8000/db-check
+- `git diff -- backend/app/routers/bookings.py`
+- `curl -s http://127.0.0.1:8000/bookings | python3 -m json.tool | sed -n '1,260p'`
+- `curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,280p'`
+- `curl -s http://127.0.0.1:8000/db-check`
 
 ## Next command to run
-Open the frontend and verify that all dashboard sections load correctly against the live API.
+Inspect the live diff in `backend/app/routers/bookings.py` before any commit or further refactor.
 
 ## Current priority
-Verify the live frontend end-to-end, then decide whether the next real task is:
-- importing real Excel data
-- expanding seed/demo data
-- improving UI/UX
-- adding missing backend features
+Decide whether the current uncommitted bookings router edits should be committed as the next checkpoint and whether payment import handling is the next real feature gap.
 
 ## Continuity rule
 At the start of the next session, read:
-- docs/PROJECT_STATE.md
-- docs/NEXT_STEPS.md
-- docs/SESSION_LOG.md
-- docs/DECISIONS.md
-- docs/HANDOFF.md
+- `docs/PROJECT_STATE.md`
+- `docs/NEXT_STEPS.md`
+- `docs/SESSION_LOG.md`
+- `docs/HANDOFF.md`
+- `docs/DECISIONS.md`

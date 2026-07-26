@@ -1,30 +1,21 @@
 # ThaiCulture Manager — Next Steps
 
 ## Immediate goal
-Recover full project continuity and continue from the actual current state, not from assumptions.
-
-## Confirmed current state
-- Docker stack starts successfully
-- Backend responds on /health
-- DB responds on /db-check
-- Seed/demo data exists
-- Frontend code is already connected to backend endpoints
+Continue from the imported-bookings validation state and decide whether the current backend router change should be preserved, completed, or reverted.
 
 ## Recommended next priorities
-1. Refine the canonical booking-level financial status logic so current computed values map cleanly to the intended business meanings (unpaid, depositrequested, depositpaid, partiallypaid, paid, overdue).
-2. Review booking detail wording and badge presentation so payment_status and booking_financial_status remain clearly distinct in the UI.
-3. Continue the financial model audit against BOOKING_FINANCIAL_WORKFLOW_V1.md, including deposit, balance, proforma, and invoice behavior.
+1. Inspect the exact uncommitted diff in `backend/app/routers/bookings.py`.
+2. Re-run the key API checks for imported bookings, especially `/bookings` and `/bookings/{code}/full`.
+3. Decide whether imported payments should remain absent after the reset-and-import run or whether payment import logic must be fixed next.
+4. Reconcile the imported flow with the canonical booking financial workflow definitions in `docs/BOOKING_FINANCIAL_WORKFLOW_V1.md`.
 
 ## First commands for next session
 cd ~/Projects/thaiculture-manager
-docker compose up -d
-curl http://localhost:8000/health
-curl http://localhost:8000/db-check
+git diff -- backend/app/routers/bookings.py
+curl -s http://127.0.0.1:8000/bookings | python3 -m json.tool | sed -n '1,260p'
+curl -s http://127.0.0.1:8000/bookings/IMP-20251218-ALEXIS-001/full | python3 -m json.tool | sed -n '1,280p'
+curl -s http://127.0.0.1:8000/db-check
 
 ## Important note
-Do not restart project analysis from schema-only assumptions.
-This project already has:
-- working backend routes
-- seeded data
-- connected frontend structure
-- booking detail financial/operational flow
+Do not assume the seed-demo reference booking is the only validation path anymore.
+The imported dataset is now part of the active continuity state.

@@ -1,79 +1,16 @@
 # ThaiCulture Manager — Project State
 
-## Purpose
-ThaiCulture Manager is an internal operations dashboard for managing tour bookings, customers, tours, payments, guides, drivers, assignments, and operational margins.
+## Current state
+- Repository branch is `main`.
+- Working tree is not clean anymore because `backend/app/routers/bookings.py` has local modifications that are not yet committed.
+- The current backend router still contains the booking financial status helper `compute_booking_financial_status(...)`, confirming the booking financial status work remains present in code.
 
-## Current stack
-- PostgreSQL 16 in Docker
-- FastAPI backend with psycopg
-- React + TypeScript + Vite frontend
-- Local orchestration via docker-compose
+## Session checkpoint
+- The latest session moved from validating the original seeded demo booking flow to working with imported bookings data from the July 26 terminal session log.
+- Imported bookings visible in the captured terminal state include codes such as `IMP-20251218-ALEXIS-001`, `IMP-20260216-ANDREE-003`, `IMP-20260302-CATALI-006`, and others, which confirms the import path is now a live focus area.
+- The imported booking `IMP-20251218-ALEXIS-001` was verified through `/bookings/{code}/full`, and its `payment_summary.booking_financial_status` was shown as `unpaid` in the captured output.
+- A reset-and-import flow was also executed in the terminal session using Docker Compose rebuild plus `scripts/importseeddata.py`, after which `/db-check` showed 10 bookings, 6 customers, 10 tours, 6 locations, and 0 payments.
 
-## Local runtime
-- Postgres container: tct_postgres
-- Backend container: tct_backend
-- Postgres host port: 5433
-- Backend host port: 8000
-- Backend DB URL inside Docker: postgresql://tct_admin:tct_local_password@postgres:5432/thaiculture_manager
-- DB init folder: database/init
-- Main schema file: database/init/001_schema.sql
-
-## Backend status
-Backend is already implemented and includes routers for:
-- bookings
-- customers
-- payments
-- dashboard
-- tours
-- locations
-- guides
-- drivers
-- assignments
-
-Backend health and DB connectivity were confirmed from local terminal.
-
-## Frontend status
-Frontend is already implemented as a dark dashboard UI with:
-- dashboard overview
-- bookings list
-- booking detail view
-- customers list
-- tours list
-- assignments list
-- payments list
-- guides list
-- drivers list
-- locations list
-- mobile navigation drawer
-
-## Seed/demo data confirmed
-Local database currently contains at least:
-- 1 booking
-- 1 customer
-- 2 payments
-- 1 tour
-- 1 location
-- 1 guide
-- 1 driver
-- 2 assignments
-
-Primary demo booking:
-- Booking code: TCT-2026-000001
-- Customer: Thomas Richter
-- Tour: Ayutthaya Sunset & Night Temples
-- Guests: 8
-- Guide language: DE
-- Selling price: 14900 THB
-- Payment status: Partially Paid
-- Operations margin: 7900 THB
-- Margin percent: 53.02%
-
-## Current interpretation of project stage
-Project is not at the schema-design stage anymore.
-It is already an MVP-level internal operations product with a working local stack, real API routes, and seeded test data.
-
-## Current validated booking detail state
-The backend full booking detail endpoint was validated against the real seeded booking TCT-2026-000001.
-The response returns booking, payments, payment_summary, assignments, and operations_summary correctly on real data.
-The payment_summary contract now includes both payment_status and booking_financial_status.
-The booking detail UI was re-tested end-to-end and displays the booking-level financial status correctly for TCT-2026-000001.
+## Practical meaning
+- The project is no longer only in the original seed-demo validation phase; it is now also validating imported historical bookings and how they appear through the same API contract.
+- Before any commit, the next session should first inspect the current diff in `backend/app/routers/bookings.py` to decide whether the uncommitted changes are intentional checkpoint-worthy work or partial edits.
