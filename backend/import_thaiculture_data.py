@@ -8,7 +8,7 @@ import psycopg
 import os
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://tct_admin:tct_local_password@localhost:5433/thaiculture_manager")
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent
 IMPORTS = ROOT / "data" / "imports"
 
 BOOKINGS_CSV = IMPORTS / "bookings.csv"
@@ -24,8 +24,31 @@ STATUS_MAP = {
 
 LANG_MAP = {"RO": "RO", "EN": "EN", "FR": "FR"}
 
-def booking_code(idx: int) -> str:
-    return f"TCT-IMP-2026-{idx:04d}"
+TOUR_NAME_MAP = {
+    "Evening Ayutthaya UNESCO Temples Tour (privat)": "Evening in Ayutthaya",
+    "Whale Tour": "Whale Safari",
+    "Whale Tour (nespecificat)": "Whale Safari",
+    "Hua Hin Temple Tour – Cultural Day Trip": "Hua Hin Temple Tour",
+    "Hua Hin – Bangkok Day Trip": "1-Day Trip – Hua Hin → Bangkok",
+    "Kui Buri National Park – Elephant Watching": "Elephant Watching in Kui Buri National Park",
+    "Classic Bangkok": "Classic Bangkok",
+    "Mystic Bangkok": "Mystic Bangkok",
+    "Uthai Thani / Sacred River": "Uthai Thani Sacred River & Hidden Heritage",
+    "Ayutthaya 5 Highlights": "Ayutthaya: 5 Essential Sights",
+    "Ayutthaya UNESCO Full Day Tour (grup)": "Ayutthaya: 5 Essential Sights",
+    "Ayutthaya Tour (privat – GetYourGuide)": "Ayutthaya: 5 Essential Sights",
+    "Amphawa Floating Market": "Amphawa: The City on Water",
+    "Amphawa Extended Tour + Wat Samphran (privat)": "Amphawa: The City on Water",
+    "Khao Yai National Park – Full Day (grup)": "Jurassic Park Tour",
+    "Kanchanaburi – River Kwai + Erawan Falls (grup)": "Treasure of Isan",
+}
+
+REVIEW_REQUIRED_TOURS = {
+    "Whale Tour",
+    "Uthai Thani / Sacred River",
+    "Ayutthaya 5 Highlights",
+    "Amphawa Floating Market",
+}
 
 def split_name(display_name: str):
     if not display_name:
@@ -95,6 +118,20 @@ def get_or_create_customer(cur, display_name: str, email: str, language: str, no
     return customer_id
 
 def pick_tour(cur, booking_tour_name: str):
+    canonical_name = TOUR_NAME_MAP.get((booking_tour_name or "").strip(), (booking_tour_name or "").strip())
+    cur.execute(
+        """
+        SELECT id, name, tour_code
+        FROM tours
+        WHERE lower(name) = lower(%s)
+        LIMIT 1
+        """,
+        (canonical_name,),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+
     cur.execute(
         """
         SELECT id, name, tour_code
@@ -103,7 +140,7 @@ def pick_tour(cur, booking_tour_name: str):
         ORDER BY name
         LIMIT 1
         """,
-        (f"%{booking_tour_name.split('–')[0].split('(')[0].strip()}%",),
+        (f"%{canonical_name.split('–')[0].split('(')[0].strip()}%",),
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -154,7 +191,7 @@ def import_bookings(cur):
                 continue
 
             bid = str(uuid.uuid4())
-            bcode = booking_code(idx)
+            bcode = row.get("booking_code") or row.get("bookingcode") or f"TCT-IMP-2026-{idx:04d}"
             cur.execute(
                 """
                 INSERT INTO bookings (
@@ -168,7 +205,7 @@ def import_bookings(cur):
                     bid,
                     bcode,
                     STATUS_MAP.get(row["status"], "Pending"),
-                    "Imported Excel",
+                    row.get("source") or "Imported CSV",
                     customer_id,
                     tour_id,
                     tour_date or None,
