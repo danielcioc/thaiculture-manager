@@ -39,8 +39,6 @@ TOUR_NAME_MAP = {
     "Ayutthaya Tour (privat – GetYourGuide)": "Ayutthaya: 5 Essential Sights",
     "Amphawa Floating Market": "Amphawa: The City on Water",
     "Amphawa Extended Tour + Wat Samphran (privat)": "Amphawa: The City on Water",
-    "Khao Yai National Park – Full Day (grup)": "Jurassic Park Tour",
-    "Kanchanaburi – River Kwai + Erawan Falls (grup)": "Treasure of Isan",
 }
 
 REVIEW_REQUIRED_TOURS = {
@@ -48,6 +46,8 @@ REVIEW_REQUIRED_TOURS = {
     "Uthai Thani / Sacred River",
     "Ayutthaya 5 Highlights",
     "Amphawa Floating Market",
+    "Khao Yai National Park – Full Day (grup)",
+    "Kanchanaburi – River Kwai + Erawan Falls (grup)",
 }
 
 def split_name(display_name: str):
@@ -118,7 +118,12 @@ def get_or_create_customer(cur, display_name: str, email: str, language: str, no
     return customer_id
 
 def pick_tour(cur, booking_tour_name: str):
-    canonical_name = TOUR_NAME_MAP.get((booking_tour_name or "").strip(), (booking_tour_name or "").strip())
+    raw_name = (booking_tour_name or "").strip()
+
+    if raw_name in REVIEW_REQUIRED_TOURS:
+        return None
+
+    canonical_name = TOUR_NAME_MAP.get(raw_name, raw_name)
     cur.execute(
         """
         SELECT id, name, tour_code
