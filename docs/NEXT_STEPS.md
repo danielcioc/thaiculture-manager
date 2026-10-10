@@ -1,41 +1,48 @@
 # ThaiCulture Manager — Next Steps
 
-## Immediate goal
-Validate the business correctness of the historical tour mappings and stabilize the canonical tours workflow between the website catalog and the manager database.
+Last updated: 2026-10-10
 
 ## Confirmed current state
-- Backend Docker image now includes the full backend context, so `import_thaiculture_data.py` is available inside the container.
-- Canonical tours catalog was seeded successfully into the `tours` table.
-- `tours_count` is 26.
-- Historical importer now maps all 10 imported bookings to canonical tours.
-- Latest confirmed DB check:
-  - bookings_count: 10
-  - customers_count: 6
-  - payments_count: 2
-  - tours_count: 26
-  - locations_count: 6
 
-## Recommended next priorities
-1. Review the business correctness of heuristic mappings introduced in `TOUR_NAME_MAP`.
-2. Confirm whether these mappings should remain canonical aliases:
-   - `Khao Yai National Park – Full Day (grup)` -> `Jurassic Park Tour`
-   - `Kanchanaburi – River Kwai + Erawan Falls (grup)` -> `Treasure of Isan`
-3. Decide whether `REVIEW_REQUIRED_TOURS` should become active logic rather than a passive constant.
-4. Replace the manual SQL seed approach with a durable catalog-ingestion workflow sourced from the website/catalog.
-5. Add a safer reimport/update path so existing imported bookings can be backfilled without delete-and-reimport.
+- Docker stack starts successfully.
+- PostgreSQL contains 28 canonical tours.
+- All 10 historical bookings are mapped to canonical tours.
+- The two former incorrect heuristic mappings were corrected.
+- `WEB-027` and `WEB-028` were added as real canonical products.
+- Importer mappings are aligned with the corrected database state.
+- Latest commits are pushed to `main`.
 
-## Useful verification commands
-cd ~/Projects/thaiculture-manager
-git status --short
-curl -s http://127.0.0.1:8000/db-check | python3 -m json.tool
-docker compose exec -T postgres psql -U tct_admin -d thaiculture_manager -c "
-select b.booking_code, t.tour_code, t.name as matched_tour
-from bookings b
-left join tours t on t.id = b.tour_id
-where b.source ilike '%Imported%'
-order by b.booking_code;
-"
+## Immediate next priority
 
-## Important note
-Do not treat all current mappings as business-confirmed truth yet.
-The import is now technically working, but at least some mappings are still heuristic and must be reviewed against the live website/catalog before being considered final.
+Implement the importer review mechanism.
+
+### Required behavior
+
+For every imported booking, preserve or derive:
+
+- `imported_raw_tour_name`
+- `mapping_status`
+- `needs_manual_review`
+- canonical tour reference, when safely mapped
+
+### Mapping statuses
+
+- `confirmed`: deterministic mapping exists and is business-approved.
+- `probable_manual_review`: best candidate exists, but business confirmation is required.
+- `unmapped`: no safe mapping exists.
+
+### Implementation rules
+
+- Do not silently fuzzy-match unknown labels.
+- Do not create canonical tours automatically from imported labels.
+- Preserve the original imported label even when a canonical tour is assigned.
+- Make reviewable and unmapped records visible for business review.
+
+## Verification after implementation
+
+Run a clean test import or a controlled update path and verify:
+
+- all 10 existing imported bookings retain their correct canonical tours;
+- unknown labels become `unmapped`;
+- reviewable labels become `probable_manual_review`;
+- no duplicate tours are created automatically.

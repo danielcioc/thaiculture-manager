@@ -48,3 +48,18 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Continuity should resume from the imported-data checkpoint, not only from the original seeded demo booking.
 - The Alexis booking is now the verified financial-status reference case and should remain preserved in docs and Git history.
 - The backend import pipeline still needs cleanup so future imports do not create duplicates or misparsed payment records.
+
+## 2026-10-10: canonical tour catalog correction
+
+- Reviewed the live website catalog and confirmed 26 published tours.
+- Confirmed that two historical labels represented real products missing from the canonical catalog.
+- Added canonical tours:
+  - `WEB-027 Khao Yai National Park – Full Day`
+  - `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`
+- Removed incorrect heuristic mappings:
+  - `Khao Yai National Park – Full Day (grup)` -> `Jurassic Park Tour`
+  - `Kanchanaburi – River Kwai + Erawan Falls (grup)` -> `Treasure of Isan`
+- Added deterministic importer mappings to the new canonical tours.
+- Updated database mappings for `TCT-IMP-2026-0007` and `TCT-IMP-2026-0008`.
+- Verified that all 10 imported bookings now have a canonical tour.
+- Removed temporary importer backup files.
