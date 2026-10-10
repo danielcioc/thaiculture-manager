@@ -39,6 +39,8 @@ TOUR_NAME_MAP = {
     "Ayutthaya Tour (privat – GetYourGuide)": "Ayutthaya: 5 Essential Sights",
     "Amphawa Floating Market": "Amphawa: The City on Water",
     "Amphawa Extended Tour + Wat Samphran (privat)": "Amphawa: The City on Water",
+    "Khao Yai National Park – Full Day (grup)": "Khao Yai National Park – Full Day",
+    "Kanchanaburi – River Kwai + Erawan Falls (grup)": "Kanchanaburi: River Kwai & Erawan Falls",
 }
 
 REVIEW_REQUIRED_TOURS = {
@@ -46,8 +48,6 @@ REVIEW_REQUIRED_TOURS = {
     "Uthai Thani / Sacred River",
     "Ayutthaya 5 Highlights",
     "Amphawa Floating Market",
-    "Khao Yai National Park – Full Day (grup)",
-    "Kanchanaburi – River Kwai + Erawan Falls (grup)",
 }
 
 def split_name(display_name: str):
