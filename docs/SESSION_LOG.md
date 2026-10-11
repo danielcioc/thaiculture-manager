@@ -63,3 +63,14 @@ Create persistent documentation files inside docs/ so future sessions can recons
 - Updated database mappings for `TCT-IMP-2026-0007` and `TCT-IMP-2026-0008`.
 - Verified that all 10 imported bookings now have a canonical tour.
 - Removed temporary importer backup files.
+
+## 2026-10-11: importer mapping review mechanism
+
+- Added `imported_raw_tour_name`, `mapping_status`, and `needs_manual_review` to the bookings table.
+- Backfilled all 10 imported bookings with their original CSV tour labels.
+- Set all existing imported bookings to `mapping_status = confirmed` and `needs_manual_review = false`.
+- Updated the importer to use `resolve_tour_mapping()`.
+- Deterministic mappings now produce `confirmed`.
+- Review-required labels now produce `probable_manual_review` and no tour assignment.
+- Unknown labels now produce `unmapped` and no tour assignment.
+- Removed silent fuzzy matching for unknown or review-required tour labels.

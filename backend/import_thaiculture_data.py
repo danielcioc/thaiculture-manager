@@ -117,13 +117,25 @@ def get_or_create_customer(cur, display_name: str, email: str, language: str, no
     )
     return customer_id
 
-def pick_tour(cur, booking_tour_name: str):
+def resolve_tour_mapping(booking_tour_name: str):
     raw_name = (booking_tour_name or "").strip()
 
+    if raw_name in TOUR_NAME_MAP:
+        return TOUR_NAME_MAP[raw_name], "confirmed", False
+
     if raw_name in REVIEW_REQUIRED_TOURS:
+        return None, "probable_manual_review", True
+
+    return None, "unmapped", True
+
+
+def pick_tour(cur, booking_tour_name: str):
+    raw_name = (booking_tour_name or "").strip()
+    canonical_name, _, _ = resolve_tour_mapping(raw_name)
+
+    if canonical_name is None:
         return None
 
-    canonical_name = TOUR_NAME_MAP.get(raw_name, raw_name)
     cur.execute(
         """
         SELECT id, name, tour_code
@@ -132,20 +144,6 @@ def pick_tour(cur, booking_tour_name: str):
         LIMIT 1
         """,
         (canonical_name,),
-    )
-    row = cur.fetchone()
-    if row:
-        return row[0]
-
-    cur.execute(
-        """
-        SELECT id, name, tour_code
-        FROM tours
-        WHERE lower(name) LIKE lower(%s)
-        ORDER BY name
-        LIMIT 1
-        """,
-        (f"%{canonical_name.split('–')[0].split('(')[0].strip()}%",),
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -177,6 +175,7 @@ def import_bookings(cur):
                 row["notes"],
             )
             pickup_location_id = get_or_create_location(cur, row["hotel_location"])
+            canonical_tour_name, mapping_status, needs_manual_review = resolve_tour_mapping(row["tour"])
             tour_id = pick_tour(cur, row["tour"])
 
             tour_date = row["tour_date"].strip() if row["tour_date"] and not row["tour_date"].startswith("~") else None
@@ -202,9 +201,10 @@ def import_bookings(cur):
                 INSERT INTO bookings (
                     id, booking_code, status, source, customer_id, tour_id,
                     tour_date, pickup_location_id, adults, children, infants,
-                    guide_language, selling_price, currency
+                    guide_language, selling_price, currency,
+                    imported_raw_tour_name, mapping_status, needs_manual_review
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     bid,
@@ -221,6 +221,9 @@ def import_bookings(cur):
                     LANG_MAP.get(row["language"] or "EN", "EN"),
                     float(row["price_thb"]) if row["price_thb"] else 0,
                     "THB",
+                    row["tour"],
+                    mapping_status,
+                    needs_manual_review,
                 ),
             )
             inserted.append((bid, bcode, "inserted"))
