@@ -25,6 +25,9 @@ export type BookingListItem = {
   guide_language: string | null;
   selling_price: number;
   currency: string;
+  imported_raw_tour_name: string | null;
+  mapping_status: string | null;
+  needs_manual_review: boolean;
   created_at: string;
 };
 
@@ -70,6 +73,9 @@ export type BookingDetailResponse = {
     pickup_time: string | null;
     total_guests: number;
     guide_language: string | null;
+    imported_raw_tour_name: string | null;
+    mapping_status: string | null;
+    needs_manual_review: boolean;
   };
   payments: Payment[];
   payment_summary: {

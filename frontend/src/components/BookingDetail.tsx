@@ -110,6 +110,24 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
                   <div className="detail-row"><span className="label">Booking Code</span><span>{booking.booking_code}</span></div>
                   <div className="detail-row"><span className="label">Customer</span><span>{booking.customer_name || '-'}</span></div>
                   <div className="detail-row"><span className="label">Tour</span><span>{booking.tour_name || '-'}</span></div>
+                  <div className="detail-row">
+                    <span className="label">Imported Tour Name</span>
+                    <span>{booking.imported_raw_tour_name || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Mapping Status</span>
+                    <span>{booking.mapping_status || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Manual Review</span>
+                    <span>
+                      {booking.needs_manual_review ? (
+                        <span className="status needs-review">Needs review</span>
+                      ) : (
+                        'No'
+                      )}
+                    </span>
+                  </div>
                   <div className="detail-row"><span className="label">Tour Date</span><span>{formatDate(booking.tour_date)}</span></div>
                   <div className="detail-row"><span className="label">Pickup Time</span><span>{formatTime(booking.pickup_time)}</span></div>
                   <div className="detail-row"><span className="label">Guests</span><span>{booking.total_guests || 0}</span></div>

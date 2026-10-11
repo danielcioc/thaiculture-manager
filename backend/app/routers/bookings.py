@@ -46,7 +46,7 @@ class BookingCreate(BaseModel):
 
 
 @router.get("")
-def list_bookings():
+def list_bookings(needs_manual_review: Optional[bool] = None):
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -82,15 +82,19 @@ def list_bookings():
                     b.guide_language,
                     b.selling_price,
                     b.currency,
+                    b.imported_raw_tour_name,
+                    b.mapping_status,
+                    b.needs_manual_review,
                     b.created_at
                 FROM bookings b
                 LEFT JOIN customers c ON c.id = b.customer_id
                 LEFT JOIN tours t ON t.id = b.tour_id
                 LEFT JOIN locations pickup ON pickup.id = b.pickup_location_id
                 LEFT JOIN locations dropoff ON dropoff.id = b.dropoff_location_id
+                WHERE (%s::boolean IS NULL OR b.needs_manual_review = %s::boolean)
                 ORDER BY b.created_at DESC
                 LIMIT 100;
-            """)
+            """, (needs_manual_review, needs_manual_review))
             rows = cur.fetchall()
             columns = [desc[0] for desc in cur.description]
 
@@ -138,6 +142,9 @@ def get_booking(booking_code: str):
                     b.guide_language,
                     b.selling_price,
                     b.currency,
+                    b.imported_raw_tour_name,
+                    b.mapping_status,
+                    b.needs_manual_review,
                     b.created_at
                 FROM bookings b
                 LEFT JOIN customers c ON c.id = b.customer_id
@@ -419,6 +426,9 @@ def get_booking_full_detail(booking_code: str):
                     b.guide_language,
                     b.selling_price,
                     b.currency,
+                    b.imported_raw_tour_name,
+                    b.mapping_status,
+                    b.needs_manual_review,
                     b.created_at
                 FROM bookings b
                 LEFT JOIN customers c ON c.id = b.customer_id

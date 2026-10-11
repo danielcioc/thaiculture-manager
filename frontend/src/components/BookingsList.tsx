@@ -75,6 +75,12 @@ export function BookingsList({ data, onSelectBooking }: BookingsListProps) {
                   <span className={`status ${getStatusClass(booking.status)}`}>{booking.status}</span>
                 </div>
 
+                {booking.needs_manual_review && (
+                  <div style={{ marginTop: '8px' }}>
+                    <span className="status needs-review">Needs review</span>
+                  </div>
+                )}
+
                 <div className="booking-meta-grid">
                   <div>
                     <span className="booking-meta-label">Customer</span>
