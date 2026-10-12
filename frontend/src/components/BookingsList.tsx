@@ -2,12 +2,21 @@ import type { BookingsResponse } from '../types/bookings';
 import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
 
+type ReviewFilter = 'all' | 'needs_review' | 'no_review';
+
 type BookingsListProps = {
   data: BookingsResponse;
+  reviewFilter: ReviewFilter;
+  onReviewFilterChange: (filter: ReviewFilter) => void;
   onSelectBooking: (bookingCode: string) => void;
 };
 
-export function BookingsList({ data, onSelectBooking }: BookingsListProps) {
+export function BookingsList({
+  data,
+  reviewFilter,
+  onReviewFilterChange,
+  onSelectBooking,
+}: BookingsListProps) {
   const totalRevenue = data.items.reduce(
     (sum, item) => sum + Number(item.selling_price || 0),
     0,
@@ -53,7 +62,29 @@ export function BookingsList({ data, onSelectBooking }: BookingsListProps) {
             <h2 style={{ margin: 0 }}>Bookings</h2>
             <p className="section-subtitle">Operational booking overview</p>
           </div>
-          <span className="meta-pill">{data.count} total</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <label htmlFor="booking-review-filter" className="booking-meta-label">
+              Review status
+            </label>
+            <select
+              id="booking-review-filter"
+              value={reviewFilter}
+              onChange={(event) => onReviewFilterChange(event.target.value as ReviewFilter)}
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                background: 'var(--surface, #111827)',
+                color: 'inherit',
+                border: '1px solid var(--border, #334155)',
+                borderRadius: '8px',
+                padding: '8px 10px',
+              }}
+            >
+              <option value="all">All</option>
+              <option value="needs_review">Needs review</option>
+              <option value="no_review">No review needed</option>
+            </select>
+            <span className="meta-pill">{data.count} total</span>
+          </div>
         </div>
 
         {data.items.length === 0 ? (

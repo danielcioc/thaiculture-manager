@@ -37,6 +37,7 @@ type View =
 
 function App() {
   const [bookings, setBookings] = useState<BookingsResponse | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'needs_review' | 'no_review'>('all');
   const [customers, setCustomers] = useState<CustomersResponse | null>(null);
   const [tours, setTours] = useState<ToursResponse | null>(null);
   const [assignments, setAssignments] = useState<AssignmentsResponse | null>(null);
@@ -69,11 +70,20 @@ function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    apiGet<BookingsResponse>('/bookings')
+    const query =
+      reviewFilter === 'all'
+        ? ''
+        : `?needs_manual_review=${reviewFilter === 'needs_review'}`;
+
+    setLoadingList(true);
+    setError('');
+    apiGet<BookingsResponse>(`/bookings${query}`)
       .then(setBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoadingList(false));
+  }, [reviewFilter]);
 
+  useEffect(() => {
     apiGet<CustomersResponse>('/customers')
       .then(setCustomers)
       .catch((e) => setError(e.message))
@@ -181,7 +191,12 @@ function App() {
   const renderContent = () => {
     if (view === 'bookings') {
       return !isDetailView ? (
-        <BookingsList data={bookings} onSelectBooking={setSelectedCode} />
+        <BookingsList
+          data={bookings}
+          reviewFilter={reviewFilter}
+          onReviewFilterChange={setReviewFilter}
+          onSelectBooking={setSelectedCode}
+        />
       ) : detail ? (
         <BookingDetail data={detail} loading={loadingDetail} onBack={() => setSelectedCode(null)} />
       ) : (
