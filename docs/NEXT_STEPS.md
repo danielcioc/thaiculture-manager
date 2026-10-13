@@ -1,48 +1,29 @@
 # ThaiCulture Manager — Next Steps
 
-Last updated: 2026-10-10
+Last updated: 2026-10-13
 
 ## Confirmed current state
 
-- Docker stack starts successfully.
-- PostgreSQL contains 28 canonical tours.
-- All 10 historical bookings are mapped to canonical tours.
-- The two former incorrect heuristic mappings were corrected.
-- `WEB-027` and `WEB-028` were added as real canonical products.
-- Importer mappings are aligned with the corrected database state.
-- Latest commits are pushed to `main`.
+- Importer review mechanism is implemented.
+- All 10 imported bookings have canonical tours.
+- All 10 imported bookings are marked `confirmed` and `needs_manual_review = false`.
+- Marina mapping is business-confirmed: `Whale Tour (nespecificat)` -> `WEB-016 Whale Safari`.
+- Alexis payment checkpoint is verified: 6,500 THB cash, reference `TCT-TH-2025-1218-001`.
+- Backend tests pass: 10 tests, OK.
+- Database connectivity is healthy.
 
-## Immediate next priority
+## Immediate priority
 
-Implement the importer review mechanism.
+Save the current validated state in Git:
 
-### Required behavior
+1. Inspect `git status --short` and `git diff -- docs`.
+2. Stage only intentional documentation and importer-review files.
+3. Do not stage database dumps, caches, or unrelated backend data.
+4. Commit the importer-review validation and Marina mapping confirmation.
+5. Push to `main` only after reviewing the staged diff.
 
-For every imported booking, preserve or derive:
+## Follow-up work
 
-- `imported_raw_tour_name`
-- `mapping_status`
-- `needs_manual_review`
-- canonical tour reference, when safely mapped
+After the Git checkpoint, review the two zero-amount imported payment artifacts and decide whether they should be corrected, marked as non-financial references, or removed through a controlled cleanup workflow.
 
-### Mapping statuses
-
-- `confirmed`: deterministic mapping exists and is business-approved.
-- `probable_manual_review`: best candidate exists, but business confirmation is required.
-- `unmapped`: no safe mapping exists.
-
-### Implementation rules
-
-- Do not silently fuzzy-match unknown labels.
-- Do not create canonical tours automatically from imported labels.
-- Preserve the original imported label even when a canonical tour is assigned.
-- Make reviewable and unmapped records visible for business review.
-
-## Verification after implementation
-
-Run a clean test import or a controlled update path and verify:
-
-- all 10 existing imported bookings retain their correct canonical tours;
-- unknown labels become `unmapped`;
-- reviewable labels become `probable_manual_review`;
-- no duplicate tours are created automatically.
+Do not silently delete payments. Preserve the original imported references and document the business decision before changing financial data.

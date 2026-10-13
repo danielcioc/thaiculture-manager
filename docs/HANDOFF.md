@@ -1,54 +1,52 @@
 # ThaiCulture Manager — Handoff
 
-Last updated: 2026-10-10
+Last updated: 2026-10-13
 
 ## Current state
 
-The historical booking import is stable and all 10 imported bookings are mapped to canonical tours.
+The importer review mechanism is implemented and validated by unit tests.
 
-The canonical catalog contains 28 tours:
+All 10 historical imported bookings have a canonical tour assigned and are marked `confirmed`, with `needs_manual_review = false`.
 
-- `WEB-001` through `WEB-026`: website catalog tours.
-- `WEB-027`: `Khao Yai National Park – Full Day`
-- `WEB-028`: `Kanchanaburi: River Kwai & Erawan Falls`
+The business mapping for Marina was confirmed:
 
-## Corrected mappings
+- Booking: `TCT-IMP-2026-0002`
+- Raw imported label: `Whale Tour (nespecificat)`
+- Canonical tour: `WEB-016 Whale Safari`
+- Mapping status: `confirmed`
+- Manual review: `false`
 
-The former incorrect heuristic mappings were removed:
+## Verified financial checkpoint
 
-- `Khao Yai National Park – Full Day (grup)` no longer maps to `Jurassic Park Tour`.
-- `Kanchanaburi – River Kwai + Erawan Falls (grup)` no longer maps to `Treasure of Isan`.
+Booking `TCT-IMP-2026-0001` (Alexis Chen + Holger Roessner) has exactly one payment:
 
-They now map to:
+- Amount: `6500.00 THB`
+- Method: `Cash`
+- Status: `Paid`
+- Reference: `TCT-TH-2025-1218-001`
+- Paid at: `2025-12-18 12:00:00+07`
 
-- `WEB-027 Khao Yai National Park – Full Day`
-- `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`
+Do not insert this payment again.
 
-## Database corrections applied
+## Known data issue
 
-- `TCT-IMP-2026-0007` is mapped to `WEB-027`.
-- `TCT-IMP-2026-0008` is mapped to `WEB-028`.
-- No imported booking remains without a canonical tour.
+Two imported payment rows have `0.00 THB` and status `Pattaya`:
 
-## Importer state
+- `TCT-IMP-2026-0003` — `Imported from TCT-TH-2026-HH-002`
+- `TCT-IMP-2026-0006` — `Imported from TCT-TH-2026-0206-001`
 
-`backend/import_thaiculture_data.py` contains deterministic mappings for both corrected legacy labels.
-
-`REVIEW_REQUIRED_TOURS` still contains:
-
-- `Whale Tour`
-- `Uthai Thani / Sacred River`
-- `Ayutthaya 5 Highlights`
-- `Amphawa Floating Market`
-
-It is not yet connected to persistent review metadata.
+These are legacy import artifacts and must not be treated as valid financial payments until their source data and intended business meaning are reviewed.
 
 ## Next task
 
-Implement persistent importer review metadata:
+Update the remaining continuity documents so they no longer request an already-implemented importer review mechanism. Then inspect the Git diff and prepare a clean checkpoint that includes only intentional documentation and importer-review files; exclude database dumps, caches, and unrelated backend data.
 
-- `imported_raw_tour_name`
-- `mapping_status`
-- `needs_manual_review`
+## Restart rule
 
-Do not silently fuzzy-match unknown tour labels. Mark unknown labels as `unmapped` and reviewable labels as `probable_manual_review`.
+At the next session start, read in this order:
+
+- docs/HANDOFF.md
+- docs/NEXT_STEPS.md
+- docs/SESSION_LOG.md
+- docs/DECISIONS.md
+- docs/PROJECT_STATE.md
