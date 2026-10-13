@@ -12,6 +12,7 @@ from app.routers import (
     drivers,
     assignments,
     invoices,
+    pricing,
 )
 
 app = FastAPI(title="ThaiCulture Manager API")
@@ -39,6 +40,7 @@ app.include_router(guides.router)
 app.include_router(drivers.router)
 app.include_router(assignments.router)
 app.include_router(invoices.router)
+app.include_router(pricing.router)
 
 
 @app.get("/health")

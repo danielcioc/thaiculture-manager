@@ -1,3 +1,5 @@
+import type { PricingRule } from '../types/tours';
+
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export async function apiGet<T>(path: string): Promise<T> {
@@ -16,4 +18,12 @@ export async function getInvoices() {
 
 export async function getInvoiceDetail(invoiceNo: string) {
   return apiGet(`/invoices/${invoiceNo}`);
+}
+
+export async function getPricingRules() {
+  return apiGet<PricingRule[]>('/pricing/rules');
+}
+
+export async function getPricingRuleByTourCode(tourCode: string) {
+  return apiGet<PricingRule>(`/pricing/tours/${tourCode}`);
 }
