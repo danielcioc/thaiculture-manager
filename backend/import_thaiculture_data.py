@@ -240,6 +240,15 @@ def import_payments(cur, booking_map):
             "TCT-TH-2026-HH-002": "Andreea",
         }
         for row in reader:
+            amount_raw = (row.get("amount") or "").strip()
+            if not amount_raw:
+                continue
+            try:
+                amount = float(amount_raw)
+            except ValueError:
+                continue
+            if amount <= 0:
+                continue
             customer_hint = invoice_booking.get(row["invoice_no"])
             booking_id = None
             if customer_hint:
@@ -257,7 +266,7 @@ def import_payments(cur, booking_map):
                 (
                     str(uuid.uuid4()),
                     booking_id,
-                    0,
+                    amount,
                     "THB",
                     row["method"],
                     row["status"],
