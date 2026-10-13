@@ -1,0 +1,119 @@
+import argparse
+import json
+import os
+from pathlib import Path
+
+
+CATALOG_PATH = Path("data/catalog/tours.json")
+
+REQUIRED_FIELDS = {
+    "tour_code",
+    "name",
+    "category",
+    "default_duration_hours",
+    "website_url",
+    "is_active",
+}
+
+def load_catalog():
+    payload = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    tours = payload.get("tours", [])
+    validated = []
+
+    for i, row in enumerate(tours, start=1):
+        missing = REQUIRED_FIELDS - set(row.keys())
+        if missing:
+            raise ValueError(f"tour #{i} missing fields: {sorted(missing)}")
+
+        tour_code = str(row["tour_code"]).strip()
+        name = str(row["name"]).strip()
+        category = row["category"]
+        duration = row["default_duration_hours"]
+        website_url = row["website_url"]
+        is_active = row["is_active"]
+
+        if not tour_code:
+            raise ValueError(f"tour #{i} has empty tour_code")
+        if not name:
+            raise ValueError(f"tour #{i} has empty name")
+        if duration is not None:
+            duration = float(duration)
+        if website_url is not None:
+            website_url = str(website_url).strip() or None
+        if category is not None:
+            category = str(category).strip() or None
+
+        validated.append(
+            {
+                "tour_code": tour_code,
+                "name": name,
+                "category": category,
+                "default_duration_hours": duration,
+                "website_url": website_url,
+                "is_active": bool(is_active),
+            }
+        )
+
+    return validated
+
+def get_conn():
+    import psycopg
+    database_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql://tct_admin:tct_local_password@postgres:5432/thaiculture_manager",
+    )
+    return psycopg.connect(database_url)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    tours = load_catalog()
+    print(f"loaded {len(tours)} tours from {CATALOG_PATH}")
+
+    if args.dry_run:
+        for row in tours[:5]:
+            print(f"DRY RUN {row['tour_code']} -> {row['name']}")
+        print("dry run only; no database changes made")
+        return
+
+    conn = get_conn()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                for row in tours:
+                    cur.execute(
+                        """
+                        INSERT INTO tours (
+                            tour_code,
+                            name,
+                            category,
+                            default_duration_hours,
+                            website_url,
+                            is_active
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (tour_code)
+                        DO UPDATE SET
+                            name = EXCLUDED.name,
+                            category = EXCLUDED.category,
+                            default_duration_hours = EXCLUDED.default_duration_hours,
+                            website_url = EXCLUDED.website_url,
+                            is_active = EXCLUDED.is_active
+                        """,
+                        (
+                            row["tour_code"],
+                            row["name"],
+                            row["category"],
+                            row["default_duration_hours"],
+                            row["website_url"],
+                            row["is_active"],
+                        ),
+                    )
+        print(f"upserted {len(tours)} tours")
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "source": "database_export_pending_website_catalog_validation",
+  "generated_at": "2026-10-13T11:17:54Z",
+  "tours": [
+    {
+      "tour_code": "WEB-001",
+      "name": "9 Wonders of the Capital",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "9-wonders-of-capital.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-002",
+      "name": "The City of Moon and Sapphires",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "orasul-lunii-safirelor.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-003",
+      "name": "Classic Bangkok",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "classic-bangkok-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-004",
+      "name": "Mystic Bangkok",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "mystic-bangkok-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-005",
+      "name": "All of Bangkok (Extended Tour)",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "all-bangkok-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-006",
+      "name": "Evening in Ayutthaya",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "evening-in-ayutthaya.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-007",
+      "name": "Ayutthaya: 5 Essential Sights",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "ayutthaya-5-sights-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-008",
+      "name": "Evening in Ancient Siam",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "evening-in-ancient-siam.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-009",
+      "name": "Dragon's Lair",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "dragons-lair-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-010",
+      "name": "Jurassic Park Tour",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "jurassic-park-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-011",
+      "name": "Wat Khun Chan & Ko Kret",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "wat-khun-chan-ko-kret.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-012",
+      "name": "Amphawa: The City on Water",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "amphawa-extended-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-013",
+      "name": "Pattaya Night Tour",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 4.0,
+      "website_url": "pattaya-night-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-014",
+      "name": "Baan Sukhawadee",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 4.0,
+      "website_url": "baan-sukhawadee-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-015",
+      "name": "Treasure of Isan",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 16.0,
+      "website_url": "treasure-of-isan-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-016",
+      "name": "Whale Safari",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 16.0,
+      "website_url": "whale-safari-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-017",
+      "name": "Above The Clouds",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 16.0,
+      "website_url": "above-the-clouds-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-018",
+      "name": "Explorers Expedition",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 16.0,
+      "website_url": "explorers-expedition-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-019",
+      "name": "Amazing Thailand + Cultural Depths",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 24.0,
+      "website_url": "amazing-thailand-ritual.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-020",
+      "name": "Phuket: Explorer’s Day Out",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "phuket-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-021",
+      "name": "1-Day Trip – Hua Hin → Bangkok",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "hua-hin-bangkok-day-trip.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-022",
+      "name": "Elephant Watching in Kui Buri National Park",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "kui-buri-elephant-watching.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-023",
+      "name": "Hua Hin Temple Tour",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "hua-hin-temple-tour.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-024",
+      "name": "Chiang Rai: White Temple, Blue Temple & Hill Tribe Village – day trip",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "chiang-rai-white-blue-temples.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-025",
+      "name": "Hua Hin Temples & Elephant Safari",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 8.0,
+      "website_url": "hua-hin-temples-elephants-safari.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-026",
+      "name": "Uthai Thani Sacred River & Hidden Heritage",
+      "category": "Website Canonical Tour",
+      "default_duration_hours": 16.0,
+      "website_url": "uthai-thani-sacred-river-hidden-heritage.html",
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-027",
+      "name": "Khao Yai National Park – Full Day",
+      "category": "Nature & Wildlife",
+      "default_duration_hours": 10.0,
+      "website_url": null,
+      "is_active": true
+    },
+    {
+      "tour_code": "WEB-028",
+      "name": "Kanchanaburi: River Kwai & Erawan Falls",
+      "category": "History & Nature",
+      "default_duration_hours": 12.0,
+      "website_url": null,
+      "is_active": true
+    }
+  ]
+}
