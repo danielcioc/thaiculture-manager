@@ -1,52 +1,63 @@
 # ThaiCulture Manager — Handoff
 
-Last updated: 2026-10-13
+## Current task status
 
-## Current state
+The payment-import cleanup and the minimal catalog-ingestion milestone are complete.
 
-The importer review mechanism is implemented and validated by unit tests.
+## Last confirmed state
 
-All 10 historical imported bookings have a canonical tour assigned and are marked `confirmed`, with `needs_manual_review = false`.
+- Local repo and remote `main` include:
+  - `8c40160` fix(import): skip payments without a positive amount
+  - `0a5f4c1` docs: add 2026-10-13 session checkpoint
+  - `bd2f25f` docs: confirm tour mappings and refresh next steps
+  - `b9ab701` feat(catalog): add idempotent tours ingestion
+- Verified DB state:
+  - bookings_count: 12
+  - customers_count: 8
+  - payments_count: 3
+  - tours_count: 28
+  - locations_count: 6
+- 3 real payments remain in DB.
+- 0 zero-amount payment artifacts remain.
+- Imported bookings remain linked to the correct canonical tours after catalog ingestion validation.
 
-The business mapping for Marina was confirmed:
+## Files added or changed in this phase
 
-- Booking: `TCT-IMP-2026-0002`
-- Raw imported label: `Whale Tour (nespecificat)`
-- Canonical tour: `WEB-016 Whale Safari`
-- Mapping status: `confirmed`
-- Manual review: `false`
+- `backend/import_thaiculture_data.py`
+- `backend/data/catalog/tours.json`
+- `backend/ingest_catalog.py`
+- `docs/PROJECT_STATE.md`
+- `docs/NEXT_STEPS.md`
+- `docs/HANDOFF.md`
+- `docs/SESSION_LOG.md`
 
-## Verified financial checkpoint
+## Important implementation notes
 
-Booking `TCT-IMP-2026-0001` (Alexis Chen + Holger Roessner) has exactly one payment:
+- Payment importer now skips rows without a valid positive `amount`.
+- Catalog ingestion now exists as a minimal durable path:
+  - source: `backend/data/catalog/tours.json`
+  - runner: `backend/ingest_catalog.py`
+  - DB write mode: `ON CONFLICT (tour_code) DO UPDATE`
+- In container context:
+  - script path resolves as `/app/ingest_catalog.py`
+  - catalog path resolves as `/app/data/catalog/tours.json`
+  - DB connection works through `DATABASE_URL`
+  - backend container uses `psycopg`, not `psycopg2`
 
-- Amount: `6500.00 THB`
-- Method: `Cash`
-- Status: `Paid`
-- Reference: `TCT-TH-2025-1218-001`
-- Paid at: `2025-12-18 12:00:00+07`
+## Recommended next task
 
-Do not insert this payment again.
-
-## Known data issue
-
-Two imported payment rows have `0.00 THB` and status `Pattaya`:
-
-- `TCT-IMP-2026-0003` — `Imported from TCT-TH-2026-HH-002`
-- `TCT-IMP-2026-0006` — `Imported from TCT-TH-2026-0206-001`
-
-These are legacy import artifacts and must not be treated as valid financial payments until their source data and intended business meaning are reviewed.
-
-## Next task
-
-Update the remaining continuity documents so they no longer request an already-implemented importer review mechanism. Then inspect the Git diff and prepare a clean checkpoint that includes only intentional documentation and importer-review files; exclude database dumps, caches, and unrelated backend data.
+Advance the catalog-ingestion workflow from locally exported JSON into a more direct website/catalog refresh workflow, while preserving:
+- idempotent upsert behavior
+- existing booking foreign keys
+- zero duplicates
+- stable imported booking mappings
 
 ## Restart rule
 
 At the next session start, read in this order:
 
-- docs/HANDOFF.md
-- docs/NEXT_STEPS.md
-- docs/SESSION_LOG.md
-- docs/DECISIONS.md
-- docs/PROJECT_STATE.md
+1. `docs/PROJECT_STATE.md`
+2. `docs/NEXT_STEPS.md`
+3. the latest section in `docs/SESSION_LOG.md`
+4. `docs/HANDOFF.md`
+5. only then inspect code

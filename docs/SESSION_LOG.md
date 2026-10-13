@@ -1,76 +1,49 @@
 # ThaiCulture Manager — Session Log
 
-## 2026-07-15
-### What was recovered
-- Confirmed project path: ~/Projects/thaiculture-manager
-- Confirmed schema file: database/init/001_schema.sql
-- Confirmed backend structure and FastAPI app
-- Confirmed routers for bookings, customers, payments, dashboard, tours, locations, guides, drivers, assignments
-- Confirmed docker-compose setup with postgres + backend
-- Confirmed backend runs locally on port 8000
-- Confirmed database is connected and seeded
-- Confirmed demo booking TCT-2026-000001
-- Confirmed frontend dashboard structure and major components
-- Confirmed booking detail includes payment summary, assignments, operations summary, and gross margin
+## 2026-10-13 continuity and catalog-ingestion checkpoint
 
-### What was learned
-- The project is much more advanced than an empty scaffold
-- Recent work was likely focused on frontend/dashboard continuity and end-to-end testing
-- Lack of persistent project notes caused loss of continuity across sessions
-
-### Action decided
-Create persistent documentation files inside docs/ so future sessions can reconstruct state quickly.
-
-## 2026-07-24 validation
-- Validated booking financial status work against the real seeded booking flow.
-- Confirmed the backend full booking detail endpoint returns payment summary and booking-level financial status for the reference booking.
-- Confirmed continuity docs were updated after that checkpoint.
-
-## 2026-07-25 validation
-- Repo state was verified as aligned on `main` with a clean working tree at that moment.
-- The seeded reference booking `TCT-2026-000001` returned `payment_summary.booking_financial_status = partiallypaid`.
-- `/health` and `/db-check` both returned healthy responses.
-
-## 2026-07-26 imported data checkpoint
 ### What was done
-- Captured and reviewed the terminal session state for imported bookings work.
-- Confirmed the current focus moved beyond the original demo booking into imported booking validation.
-- Confirmed imported booking codes including `IMP-20251218-ALEXIS-001`, `IMP-00000000-MARINA-002`, `IMP-20260216-ANDREE-003`, `IMP-20260302-CATALI-006`, and others were returned by the live API.
-- Verified `/bookings/IMP-20251218-ALEXIS-001/full` and initially observed `payment_summary.booking_financial_status = unpaid`.
-- Recreated the import files and ran the backend importer from the local virtual environment.
-- Confirmed the backend importer inserted payments from `payments.csv` but payment parsing and mapping were still wrong for some imported rows.
-- Inserted a manual payment directly into the database for `IMP-20251218-ALEXIS-001`.
-- Verified `IMP-20251218-ALEXIS-001` now returns one payment of 6500 THB and `payment_summary.booking_financial_status = paid`.
-- Confirmed the live database now shows 11 bookings, 6 customers, 4 payments, 10 tours, and 6 locations.
+
+- Cleaned the payment-import surface:
+  - removed the two accidental 0 THB payment artifacts
+  - confirmed 3 real payments remain
+  - confirmed 0 padded `' Pattaya'` payment-status artifacts remain
+- Patched `backend/import_thaiculture_data.py` so payment rows without valid positive `amount` are skipped.
+- Confirmed and published the payment-import fix in commit `8c40160`.
+- Added and published a continuity checkpoint in commit `0a5f4c1`.
+- Confirmed that `TCT-IMP-2026-0007` maps to `WEB-027 Khao Yai National Park – Full Day`.
+- Confirmed that `TCT-IMP-2026-0008` maps to `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`.
+- Updated `docs/NEXT_STEPS.md` to reflect confirmed tour mappings in commit `bd2f25f`.
+- Created `backend/data/catalog/tours.json` as canonical local catalog input.
+- Created `backend/ingest_catalog.py` as minimal idempotent catalog-ingestion runner.
+- Validated catalog ingestion with dry-run in Docker backend container.
+- Patched container/runtime compatibility:
+  - switched from `psycopg2` to `psycopg`
+  - moved DB connection to `DATABASE_URL`
+  - aligned catalog path to `data/catalog/tours.json`
+  - aligned backend-to-postgres host resolution
+- Ran real catalog ingestion successfully:
+  - `upserted 28 tours`
+  - `tours_count = 28`
+  - `duplicate_codes = 0`
+- Verified all 10 imported bookings remained linked to the same canonical tours after ingestion.
+- Published catalog-ingestion milestone in commit `b9ab701`.
 
 ### What it means
-- Imported historical bookings are now part of the active validation surface.
-- Continuity should resume from the imported-data checkpoint, not only from the original seeded demo booking.
-- The Alexis booking is now the verified financial-status reference case and should remain preserved in docs and Git history.
-- The backend import pipeline still needs cleanup so future imports do not create duplicates or misparsed payment records.
 
-## 2026-10-10: canonical tour catalog correction
+- ThaiCulture Manager now has a minimal durable catalog-ingestion flow, not only a manual SQL seed.
+- Imported-booking tour links survived a real catalog refresh based on upsert, which reduces risk for future catalog maintenance.
+- Payment import is protected against recreation of 0 THB artifacts.
+- The project continuity docs are now expected to treat both payments cleanup and catalog ingestion as completed checkpoints.
 
-- Reviewed the live website catalog and confirmed 26 published tours.
-- Confirmed that two historical labels represented real products missing from the canonical catalog.
-- Added canonical tours:
-  - `WEB-027 Khao Yai National Park – Full Day`
-  - `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`
-- Removed incorrect heuristic mappings:
-  - `Khao Yai National Park – Full Day (grup)` -> `Jurassic Park Tour`
-  - `Kanchanaburi – River Kwai + Erawan Falls (grup)` -> `Treasure of Isan`
-- Added deterministic importer mappings to the new canonical tours.
-- Updated database mappings for `TCT-IMP-2026-0007` and `TCT-IMP-2026-0008`.
-- Verified that all 10 imported bookings now have a canonical tour.
-- Removed temporary importer backup files.
+### Current verified state
 
-## 2026-10-11: importer mapping review mechanism
-
-- Added `imported_raw_tour_name`, `mapping_status`, and `needs_manual_review` to the bookings table.
-- Backfilled all 10 imported bookings with their original CSV tour labels.
-- Set all existing imported bookings to `mapping_status = confirmed` and `needs_manual_review = false`.
-- Updated the importer to use `resolve_tour_mapping()`.
-- Deterministic mappings now produce `confirmed`.
-- Review-required labels now produce `probable_manual_review` and no tour assignment.
-- Unknown labels now produce `unmapped` and no tour assignment.
-- Removed silent fuzzy matching for unknown or review-required tour labels.
+- bookings_count: 12
+- customers_count: 8
+- payments_count: 3
+- tours_count: 28
+- locations_count: 6
+- guides_count: 0
+- drivers_count: 0
+- assignments_count: 0
+- local and remote `main` include the payment-import and catalog-ingestion milestones

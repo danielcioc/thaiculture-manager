@@ -1,37 +1,46 @@
 # ThaiCulture Manager — Next Steps
 
-## Update 2026-10-13
-
-- Confirmed: `Khao Yai National Park – Full Day (grup)` maps to `WEB-027 Khao Yai National Park – Full Day`.
-- Confirmed: `Kanchanaburi – River Kwai + Erawan Falls (grup)` maps to `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`.
-- The historical tour mappings are now business-confirmed.
-
 Last updated: 2026-10-13
 
 ## Confirmed current state
 
-- Importer review mechanism is implemented.
-- All 10 imported bookings have canonical tours.
-- All 10 imported bookings are marked `confirmed` and `needs_manual_review = false`.
-- Marina mapping is business-confirmed: `Whale Tour (nespecificat)` -> `WEB-016 Whale Safari`.
-- Alexis payment checkpoint is verified: 6,500 THB cash, reference `TCT-TH-2025-1218-001`.
-- Backend tests pass: 10 tests, OK.
-- Database connectivity is healthy.
+- Docker stack starts successfully.
+- PostgreSQL contains 28 canonical tours.
+- All 10 historical imported bookings are mapped to canonical tours.
+- The `WEB-027` and `WEB-028` mappings are business-confirmed.
+- Payment importer is protected against 0 THB artifacts.
+- Database currently contains 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations.
+- A minimal idempotent catalog-ingestion workflow now exists and was validated successfully.
+- Latest commits are pushed to `main`.
 
-## Current status
+## Immediate next priority
 
-- Importer review mechanism is implemented.
-- All 10 imported bookings have canonical tours.
-- All 10 imported bookings are marked `confirmed` and `needs_manual_review = false`.
-- Marina mapping is business-confirmed: `Whale Tour (nespecificat)` -> `WEB-016 Whale Safari`.
-- Alexis payment checkpoint is verified: 6,500 THB cash, reference `TCT-TH-2025-1218-001`.
-- The two former zero-amount payment artifacts were removed through a controlled cleanup.
-- Payment importer now skips rows without a valid positive amount.
-- Backend tests pass: 10 tests, OK.
-- Database connectivity is healthy.
+Evolve the catalog-ingestion workflow from local JSON export into a more durable website/catalog refresh path, without losing the safe upsert behavior on `tour_code`.
 
-## Next steps
+## Required behavior
 
-1. Keep the importer guard in place.
-2. Review any future heuristic tour mappings before marking them canonical.
-3. Maintain durable catalog ingestion and safer reimport/update workflow.
+- Keep `backend/data/catalog/tours.json` as a controlled canonical input until website-sourced refresh is implemented.
+- Keep `backend/ingest_catalog.py` idempotent.
+- Do not delete and recreate tours during refresh.
+- Preserve existing booking-to-tour foreign keys.
+- Do not create duplicate tours.
+- Keep imported bookings stable during future catalog refreshes.
+
+## Parallel priority
+
+Continue the importer-review/data-governance path:
+
+- preserve imported raw tour labels
+- keep deterministic confirmed mappings
+- make reviewable or unmapped records visible for business review
+- avoid silent unsafe remapping
+
+## Verification after future changes
+
+After any catalog-ingestion or importer-mapping change, verify:
+
+- `tours_count` remains correct
+- `duplicate_codes = 0`
+- all 10 imported bookings retain correct canonical tours
+- no payment artifacts are reintroduced
+- `db-check` remains healthy
