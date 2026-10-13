@@ -1,5 +1,11 @@
 # ThaiCulture Manager — Next Steps
 
+## Update 2026-10-13
+
+- Confirmed: `Khao Yai National Park – Full Day (grup)` maps to `WEB-027 Khao Yai National Park – Full Day`.
+- Confirmed: `Kanchanaburi – River Kwai + Erawan Falls (grup)` maps to `WEB-028 Kanchanaburi: River Kwai & Erawan Falls`.
+- The historical tour mappings are now business-confirmed.
+
 Last updated: 2026-10-13
 
 ## Confirmed current state
@@ -12,18 +18,20 @@ Last updated: 2026-10-13
 - Backend tests pass: 10 tests, OK.
 - Database connectivity is healthy.
 
-## Immediate priority
+## Current status
 
-Save the current validated state in Git:
+- Importer review mechanism is implemented.
+- All 10 imported bookings have canonical tours.
+- All 10 imported bookings are marked `confirmed` and `needs_manual_review = false`.
+- Marina mapping is business-confirmed: `Whale Tour (nespecificat)` -> `WEB-016 Whale Safari`.
+- Alexis payment checkpoint is verified: 6,500 THB cash, reference `TCT-TH-2025-1218-001`.
+- The two former zero-amount payment artifacts were removed through a controlled cleanup.
+- Payment importer now skips rows without a valid positive amount.
+- Backend tests pass: 10 tests, OK.
+- Database connectivity is healthy.
 
-1. Inspect `git status --short` and `git diff -- docs`.
-2. Stage only intentional documentation and importer-review files.
-3. Do not stage database dumps, caches, or unrelated backend data.
-4. Commit the importer-review validation and Marina mapping confirmation.
-5. Push to `main` only after reviewing the staged diff.
+## Next steps
 
-## Follow-up work
-
-After the Git checkpoint, review the two zero-amount imported payment artifacts and decide whether they should be corrected, marked as non-financial references, or removed through a controlled cleanup workflow.
-
-Do not silently delete payments. Preserve the original imported references and document the business decision before changing financial data.
+1. Keep the importer guard in place.
+2. Review any future heuristic tour mappings before marking them canonical.
+3. Maintain durable catalog ingestion and safer reimport/update workflow.
