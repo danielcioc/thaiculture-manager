@@ -631,3 +631,34 @@ def get_booking_full_detail(booking_code: str):
                     margin_percent = round((gross_margin / selling_price) * 100, 2)
                 else:
                     margin_percent = 0
+
+            return {
+                "booking": booking_data,
+                "payments": payments,
+                "payment_summary": {
+                    "selling_price": selling_price,
+                    "paid_amount": paid_amount,
+                    "pending_amount": pending_amount,
+                    "requested_amount": requested_amount,
+                    "outstanding_amount": outstanding_amount,
+                    "remaining_unrequested_amount": remaining_unrequested_amount,
+                    "payment_status": payment_status,
+                    "booking_financial_status": booking_financial_status,
+                    "currency": booking_data["currency"],
+                },
+                "assignments": assignments,
+                "operations_summary": {
+                    "selling_price": selling_price,
+                    "guide_cost": guide_cost,
+                    "driver_cost": driver_cost,
+                    "other_cost": other_cost,
+                    "total_cost": total_cost,
+                    "gross_margin": gross_margin,
+                    "margin_percent": margin_percent,
+                    "currency": booking_data["currency"],
+                    "cost_status": quote_cost_status,
+                    "pricing_use": quote_pricing_use,
+                    "direct_cost_is_known": direct_cost_is_known,
+                    "cost_source": cost_source,
+                },
+            }
