@@ -65,6 +65,7 @@ function DetailPair({
 
 export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
   const { booking, payment_summary, operations_summary, payments, assignments } = data;
+  const operationsCurrency = operations_summary.currency ?? payment_summary.currency ?? undefined;
 
   return (
     <>
@@ -113,7 +114,7 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
             <div className="card">
               <span>Gross Margin</span>
               <strong>
-                {formatCurrency(operations_summary.gross_margin, operations_summary.currency)}
+                {formatCurrency(operations_summary.gross_margin, operationsCurrency)}
               </strong>
             </div>
           </div>
@@ -224,11 +225,11 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
                   <div className="detail-row"><span className="label">Pricing Use</span><span>{formatTitle(operations_summary.pricing_use)}</span></div>
                   <div className="detail-row"><span className="label">Cost Status</span><span>{formatTitle(operations_summary.cost_status)}</span></div>
                   <div className="detail-row"><span className="label">Direct Cost Known</span><span>{formatBooleanLabel(operations_summary.direct_cost_is_known)}</span></div>
-                  <div className="detail-row"><span className="label">Guide Cost</span><span>{formatCurrency(operations_summary.guide_cost, operations_summary.currency)}</span></div>
-                  <div className="detail-row"><span className="label">Driver Cost</span><span>{formatCurrency(operations_summary.driver_cost, operations_summary.currency)}</span></div>
-                  <div className="detail-row"><span className="label">Other Cost</span><span>{formatCurrency(operations_summary.other_cost, operations_summary.currency)}</span></div>
-                  <div className="detail-row"><span className="label">Total Cost</span><span>{formatCurrency(operations_summary.total_cost, operations_summary.currency)}</span></div>
-                  <div className="detail-row"><span className="label">Gross Margin</span><span>{formatCurrency(operations_summary.gross_margin, operations_summary.currency)}</span></div>
+                  <div className="detail-row"><span className="label">Guide Cost</span><span>{formatCurrency(operations_summary.guide_cost, operationsCurrency)}</span></div>
+                  <div className="detail-row"><span className="label">Driver Cost</span><span>{formatCurrency(operations_summary.driver_cost, operationsCurrency)}</span></div>
+                  <div className="detail-row"><span className="label">Other Cost</span><span>{formatCurrency(operations_summary.other_cost, operationsCurrency)}</span></div>
+                  <div className="detail-row"><span className="label">Total Cost</span><span>{formatCurrency(operations_summary.total_cost, operationsCurrency)}</span></div>
+                  <div className="detail-row"><span className="label">Gross Margin</span><span>{formatCurrency(operations_summary.gross_margin, operationsCurrency)}</span></div>
                   <div className="detail-row"><span className="label">Margin %</span><span>{operations_summary.margin_percent ?? '-'}{operations_summary.margin_percent !== null && operations_summary.margin_percent !== undefined ? '%' : ''}</span></div>
                 </div>
               </section>
@@ -256,7 +257,7 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
                         <DetailPair label="Driver" value={assignment.driver_name} />
                         <DetailPair
                           label="Cost"
-                          value={formatCurrency(assignment.cost, operations_summary.currency)}
+                          value={formatCurrency(assignment.cost, operationsCurrency)}
                           strong
                         />
                         <DetailPair label="Notes" value={assignment.notes} />
