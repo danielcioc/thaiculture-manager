@@ -1,11 +1,21 @@
 import type { BookingsResponse } from '../types/bookings';
+import type { PricingQuote } from '../types/tours';
 import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
 
 type ReviewFilter = 'all' | 'needs_review' | 'no_review';
 
+function formatQuoteLabel(value: string | boolean | null | undefined) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 type BookingsListProps = {
   data: BookingsResponse;
+  pricingQuotes: PricingQuote[];
   reviewFilter: ReviewFilter;
   onReviewFilterChange: (filter: ReviewFilter) => void;
   onSelectBooking: (bookingCode: string) => void;
@@ -13,6 +23,7 @@ type BookingsListProps = {
 
 export function BookingsList({
   data,
+  pricingQuotes,
   reviewFilter,
   onReviewFilterChange,
   onSelectBooking,
@@ -29,6 +40,11 @@ export function BookingsList({
     (item) => item.status === 'Confirmed',
   ).length;
   const currency = data.items[0]?.currency ?? 'THB';
+
+  const pricingQuotesMap = pricingQuotes.reduce<Record<string, PricingQuote>>((acc, quote) => {
+    acc[quote.booking_id] = quote;
+    return acc;
+  }, {});
 
   return (
     <>
@@ -50,9 +66,7 @@ export function BookingsList({
 
         <div className="card">
           <span>Total Revenue</span>
-          <strong>
-            {formatCurrency(totalRevenue, currency)}
-          </strong>
+          <strong>{formatCurrency(totalRevenue, currency)}</strong>
         </div>
       </div>
 
@@ -91,74 +105,97 @@ export function BookingsList({
           <p>No bookings found.</p>
         ) : (
           <div className="booking-list">
-            {data.items.map((booking) => (
-              <button
-                type="button"
-                className="booking-row interactive-card"
-                key={booking.id}
-                onClick={() => onSelectBooking(booking.booking_code)}
-              >
-                <div className="booking-row-top">
-                  <div>
-                    <div className="booking-code">{booking.booking_code}</div>
-                    <div className="booking-tour">{booking.tour_name || '-'}</div>
-                  </div>
-                  <span className={`status ${getStatusClass(booking.status)}`}>{booking.status}</span>
-                </div>
+            {data.items.map((booking) => {
+              const pricingQuote = pricingQuotesMap[booking.id];
 
-                {booking.needs_manual_review && (
-                  <div style={{ marginTop: '8px' }}>
-                    <span className="status needs-review">Needs review</span>
-                  </div>
-                )}
-
-                <div className="booking-meta-grid">
-                  <div>
-                    <span className="booking-meta-label">Customer</span>
-                    <span className="booking-meta-value">{booking.customer_name || '-'}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Date</span>
-                    <span className="booking-meta-value">{formatDate(booking.tour_date)}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Pickup Time</span>
-                    <span className="booking-meta-value">{formatTime(booking.pickup_time)}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Guests</span>
-                    <span className="booking-meta-value">{booking.total_guests}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Language</span>
-                    <span className="booking-meta-value">{booking.guide_language || '-'}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Pickup</span>
-                    <span className="booking-meta-value">{booking.pickup_location_name || '-'}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Source</span>
-                    <span className="booking-meta-value">{booking.source || '-'}</span>
-                  </div>
-
-                  <div>
-                    <span className="booking-meta-label">Revenue</span>
-                    <span className="booking-meta-value booking-meta-value-strong">
-                      {formatCurrency(booking.selling_price, booking.currency)}
+              return (
+                <button
+                  type="button"
+                  className="booking-row interactive-card"
+                  key={booking.id}
+                  onClick={() => onSelectBooking(booking.booking_code)}
+                >
+                  <div className="booking-row-top">
+                    <div>
+                      <div className="booking-code">{booking.booking_code}</div>
+                      <div className="booking-tour">{booking.tour_name || '-'}</div>
+                    </div>
+                    <span className={`status ${getStatusClass(booking.status)}`}>
+                      {booking.status}
                     </span>
                   </div>
-                </div>
 
-                <div className="booking-row-action">Open booking →</div>
-              </button>
-            ))}
+                  {booking.needs_manual_review && (
+                    <div style={{ marginTop: '8px' }}>
+                      <span className="status needs-review">Needs review</span>
+                    </div>
+                  )}
+
+                  {pricingQuote && (
+                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className={`status ${getStatusClass(pricingQuote.compatibility_status || 'Draft')}`}>
+                        Compatibility: {formatQuoteLabel(pricingQuote.compatibility_status)}
+                      </span>
+                      <span className={`status ${getStatusClass(pricingQuote.cost_status || 'Pending')}`}>
+                        Cost: {formatQuoteLabel(pricingQuote.cost_status)}
+                      </span>
+                      <span className={`status ${getStatusClass(pricingQuote.pricing_use || 'Draft')}`}>
+                        Use: {formatQuoteLabel(pricingQuote.pricing_use)}
+                      </span>
+                      <span className={`status ${getStatusClass(pricingQuote.direct_cost_is_known ? 'Paid' : 'Pending')}`}>
+                        Direct cost known: {formatQuoteLabel(pricingQuote.direct_cost_is_known)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="booking-meta-grid">
+                    <div>
+                      <span className="booking-meta-label">Customer</span>
+                      <span className="booking-meta-value">{booking.customer_name || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Date</span>
+                      <span className="booking-meta-value">{formatDate(booking.tour_date)}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Pickup Time</span>
+                      <span className="booking-meta-value">{formatTime(booking.pickup_time)}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Guests</span>
+                      <span className="booking-meta-value">{booking.total_guests}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Language</span>
+                      <span className="booking-meta-value">{booking.guide_language || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Pickup</span>
+                      <span className="booking-meta-value">{booking.pickup_location_name || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Source</span>
+                      <span className="booking-meta-value">{booking.source || '-'}</span>
+                    </div>
+
+                    <div>
+                      <span className="booking-meta-label">Revenue</span>
+                      <span className="booking-meta-value booking-meta-value-strong">
+                        {formatCurrency(booking.selling_price, booking.currency)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="booking-row-action">Open booking →</div>
+                </button>
+              );
+            })}
           </div>
         )}
       </section>

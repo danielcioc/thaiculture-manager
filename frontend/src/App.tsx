@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, getInvoiceDetail, getInvoices } from './services/api';
 import { BookingDetail } from './components/BookingDetail';
 import { BookingsList } from './components/BookingsList';
+import { getPricingQuotes } from './services/api';
 import { CustomersList } from './components/CustomersList';
 import { ToursList } from './components/ToursList';
 import { AssignmentsList } from './components/AssignmentsList';
@@ -12,6 +13,7 @@ import { LocationsList } from './components/LocationsList';
 import { InvoicesList } from './components/InvoicesList';
 import { InvoiceDetail } from './components/InvoiceDetail';
 import type { BookingDetailResponse, BookingsResponse } from './types/bookings';
+import type { PricingQuote } from './types/tours';
 import type { CustomersResponse } from './types/customers';
 import type { ToursResponse } from './types/tours';
 import type { AssignmentsResponse } from './types/assignments';
@@ -37,6 +39,7 @@ type View =
 
 function App() {
   const [bookings, setBookings] = useState<BookingsResponse | null>(null);
+  const [pricingQuotes, setPricingQuotes] = useState<PricingQuote[]>([]);
   const [reviewFilter, setReviewFilter] = useState<'all' | 'needs_review' | 'no_review'>('all');
   const [customers, setCustomers] = useState<CustomersResponse | null>(null);
   const [tours, setTours] = useState<ToursResponse | null>(null);
@@ -77,8 +80,14 @@ function App() {
 
     setLoadingList(true);
     setError('');
-    apiGet<BookingsResponse>(`/bookings${query}`)
-      .then(setBookings)
+    Promise.all([
+      apiGet<BookingsResponse>(`/bookings${query}`),
+      getPricingQuotes().catch(() => [] as PricingQuote[]),
+    ])
+      .then(([bookingsResponse, pricingQuotesResponse]) => {
+        setBookings(bookingsResponse);
+        setPricingQuotes(pricingQuotesResponse);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingList(false));
   }, [reviewFilter]);
@@ -193,6 +202,7 @@ function App() {
       return !isDetailView ? (
         <BookingsList
           data={bookings}
+          pricingQuotes={pricingQuotes}
           reviewFilter={reviewFilter}
           onReviewFilterChange={setReviewFilter}
           onSelectBooking={setSelectedCode}

@@ -33,29 +33,9 @@ function getConfidenceClass(confidence: string | null | undefined) {
   return getStatusClass('Draft');
 }
 
-function formatPricingUse(value: string | null | undefined) {
-  if (value === 'approved_for_quote') return 'Approved for quote';
-  if (value === 'reference_only') return 'Reference only';
-  return 'No pricing use';
-}
 
-function formatCostStatus(value: string | null | undefined) {
-  if (value === 'available') return 'Cost available';
-  if (value === 'incomplete') return 'Cost incomplete';
-  return 'Cost unknown';
-}
 
-function getPricingUseClass(value: string | null | undefined) {
-  if (value === 'approved_for_quote') return getStatusClass('Paid');
-  if (value === 'reference_only') return getStatusClass('Pending');
-  return getStatusClass('Draft');
-}
 
-function getCostStatusClass(value: string | null | undefined) {
-  if (value === 'available') return getStatusClass('Active');
-  if (value === 'incomplete') return getStatusClass('Pending');
-  return getStatusClass('Draft');
-}
 
 export function ToursList({ data }: ToursListProps) {
   const [pricingMap, setPricingMap] = useState<Record<string, PricingRule>>({});

@@ -1,0 +1,4 @@
+ id | booking_code | amount | currency | method | status | reference | created_at 
+----+--------------+--------+----------+--------+--------+-----------+------------
+(0 rows)
+

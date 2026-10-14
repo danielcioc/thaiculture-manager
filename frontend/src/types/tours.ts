@@ -35,3 +35,25 @@ export type PricingRule = {
   calculation: Record<string, unknown>;
   is_active: boolean;
 };
+
+
+export type PricingQuote = {
+  booking_code: string;
+  booking_id: string;
+  tour_id: string;
+  tour_code: string;
+  tour_name: string;
+  tour_date: string | null;
+  total_cost: number;
+  recommended_price: number;
+  minimum_price: number;
+  final_price: number | null;
+  compatibility_status: string | null;
+  confidence_status: string | null;
+  pricing_use: string | null;
+  cost_status: string | null;
+  direct_cost_is_known: boolean | null;
+  historical_price_preserved: boolean | null;
+  valid_until: string | null;
+  breakdown: Record<string, unknown>;
+};

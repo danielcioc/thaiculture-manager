@@ -43,6 +43,27 @@ class PricingRuleResponse(BaseModel):
     is_active: bool
 
 
+class PricingQuoteResponse(BaseModel):
+    booking_code: str
+    booking_id: str
+    tour_id: str
+    tour_code: str
+    tour_name: str
+    tour_date: Optional[str] = None
+    total_cost: float
+    recommended_price: float
+    minimum_price: float
+    final_price: Optional[float] = None
+    compatibility_status: Optional[str] = None
+    confidence_status: Optional[str] = None
+    pricing_use: Optional[str] = None
+    cost_status: Optional[str] = None
+    direct_cost_is_known: Optional[bool] = None
+    historical_price_preserved: Optional[bool] = None
+    valid_until: Optional[str] = None
+    breakdown: dict
+
+
 def _serialize_rule(row, columns) -> PricingRuleResponse:
     data = dict(zip(columns, row))
     conditions = data["conditions"] or {}
@@ -72,6 +93,34 @@ def _serialize_rule(row, columns) -> PricingRuleResponse:
     )
 
 
+def _serialize_quote(row, columns) -> PricingQuoteResponse:
+    data = dict(zip(columns, row))
+    breakdown = data["breakdown"] or {}
+
+    return PricingQuoteResponse(
+        booking_code=data["booking_code"],
+        booking_id=str(data["booking_id"]),
+        tour_id=str(data["tour_id"]),
+        tour_code=data["tour_code"],
+        tour_name=data["tour_name"],
+        tour_date=data["tour_date"].isoformat() if data["tour_date"] else None,
+        total_cost=float(data["total_cost"]),
+        recommended_price=float(data["recommended_price"]),
+        minimum_price=float(data["minimum_price"]),
+        final_price=_to_float(data["final_price"]),
+        compatibility_status=breakdown.get("compatibility_status"),
+        confidence_status=breakdown.get("confidence_status"),
+        pricing_use=breakdown.get("pricing_use"),
+        cost_status=breakdown.get("cost_status"),
+        direct_cost_is_known=breakdown.get("direct_cost_is_known"),
+        historical_price_preserved=breakdown.get("historical_price_preserved"),
+        valid_until=data["valid_until"].isoformat()
+        if data["valid_until"]
+        else None,
+        breakdown=breakdown,
+    )
+
+
 @router.get("/rules", response_model=list[PricingRuleResponse])
 def list_pricing_rules():
     with get_connection() as conn:
@@ -97,6 +146,78 @@ def list_pricing_rules():
             columns = [desc[0] for desc in cur.description]
 
     return [_serialize_rule(row, columns) for row in rows]
+
+
+@router.get("/quotes", response_model=list[PricingQuoteResponse])
+def list_pricing_quotes():
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    pq.booking_id,
+                    b.booking_code,
+                    b.tour_date,
+                    pq.total_cost,
+                    pq.recommended_price,
+                    pq.minimum_price,
+                    pq.final_price,
+                    pq.breakdown,
+                    pq.valid_until,
+                    t.id AS tour_id,
+                    t.tour_code,
+                    t.name AS tour_name
+                FROM pricing_quotes pq
+                JOIN bookings b ON b.id = pq.booking_id
+                JOIN tours t ON t.id = b.tour_id
+                ORDER BY b.tour_date, b.booking_code;
+                """
+            )
+            rows = cur.fetchall()
+            columns = [desc[0] for desc in cur.description]
+
+    return [_serialize_quote(row, columns) for row in rows]
+
+
+@router.get("/quotes/{booking_code}", response_model=PricingQuoteResponse)
+def get_pricing_quote(booking_code: str):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    pq.booking_id,
+                    b.booking_code,
+                    b.tour_date,
+                    pq.total_cost,
+                    pq.recommended_price,
+                    pq.minimum_price,
+                    pq.final_price,
+                    pq.breakdown,
+                    pq.valid_until,
+                    t.id AS tour_id,
+                    t.tour_code,
+                    t.name AS tour_name
+                FROM pricing_quotes pq
+                JOIN bookings b ON b.id = pq.booking_id
+                JOIN tours t ON t.id = b.tour_id
+                WHERE b.booking_code = %s
+                ORDER BY pq.created_at DESC
+                LIMIT 1;
+                """,
+                (booking_code,),
+            )
+            row = cur.fetchone()
+
+            if row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Pricing quote not found for this booking",
+                )
+
+            columns = [desc[0] for desc in cur.description]
+
+    return _serialize_quote(row, columns)
 
 
 @router.get("/tours/{tour_code}", response_model=PricingRuleResponse)
