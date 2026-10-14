@@ -14,3 +14,8 @@ coverage/
 *.log
 
 backend/data/imports/
+
+# local backups
+*.bak*
+*.local_backup
+backups/
