@@ -85,12 +85,54 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                     b.imported_raw_tour_name,
                     b.mapping_status,
                     b.needs_manual_review,
-                    b.created_at
+                    b.created_at,
+
+                    COALESCE(pay.paid_amount, 0) AS paid_amount,
+                    COALESCE(pay.pending_amount, 0) AS pending_amount,
+                    COALESCE(pay.requested_amount, 0) AS requested_amount,
+
+                    COALESCE(ac.assignment_guide_cost, 0) AS assignment_guide_cost,
+                    COALESCE(ac.assignment_driver_cost, 0) AS assignment_driver_cost,
+                    COALESCE(ac.assignment_other_cost, 0) AS assignment_other_cost,
+                    COALESCE(ac.assignment_total_cost, 0) AS assignment_total_cost,
+
+                    pq.breakdown AS quote_breakdown
+
                 FROM bookings b
                 LEFT JOIN customers c ON c.id = b.customer_id
                 LEFT JOIN tours t ON t.id = b.tour_id
                 LEFT JOIN locations pickup ON pickup.id = b.pickup_location_id
                 LEFT JOIN locations dropoff ON dropoff.id = b.dropoff_location_id
+
+                LEFT JOIN (
+                    SELECT
+                        booking_id,
+                        COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) AS paid_amount,
+                        COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) AS pending_amount,
+                        COALESCE(SUM(CASE WHEN status IN ('Paid', 'Pending') THEN amount ELSE 0 END), 0) AS requested_amount
+                    FROM payments
+                    GROUP BY booking_id
+                ) pay ON pay.booking_id = b.id
+
+                LEFT JOIN (
+                    SELECT
+                        booking_id,
+                        0::numeric AS assignment_guide_cost,
+                        0::numeric AS assignment_driver_cost,
+                        0::numeric AS assignment_other_cost,
+                        COALESCE(SUM(cost), 0) AS assignment_total_cost
+                    FROM assignments
+                    GROUP BY booking_id
+                ) ac ON ac.booking_id = b.id
+
+                LEFT JOIN (
+                    SELECT DISTINCT ON (booking_id)
+                        booking_id,
+                        breakdown
+                    FROM pricing_quotes
+                    ORDER BY booking_id, created_at DESC, id DESC
+                ) pq ON pq.booking_id = b.id
+
                 WHERE (%s::boolean IS NULL OR b.needs_manual_review = %s::boolean)
                 ORDER BY b.created_at DESC
                 LIMIT 100;
@@ -98,9 +140,155 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
             rows = cur.fetchall()
             columns = [desc[0] for desc in cur.description]
 
+    items = []
+
+    for row in rows:
+        item = dict(zip(columns, row))
+
+        selling_price = float(item.get("selling_price") or 0)
+        paid_amount = float(item.pop("paid_amount", 0) or 0)
+        pending_amount = float(item.pop("pending_amount", 0) or 0)
+        requested_amount = float(item.pop("requested_amount", 0) or 0)
+
+        assignment_guide_cost = float(item.pop("assignment_guide_cost", 0) or 0)
+        assignment_driver_cost = float(item.pop("assignment_driver_cost", 0) or 0)
+        assignment_other_cost = float(item.pop("assignment_other_cost", 0) or 0)
+        assignment_total_cost = float(item.pop("assignment_total_cost", 0) or 0)
+
+        quote_breakdown = item.pop("quote_breakdown", None) or {}
+        if not isinstance(quote_breakdown, dict):
+            quote_breakdown = {}
+
+        quote_cost_status = (
+            quote_breakdown.get("cost_status")
+            or quote_breakdown.get("coststatus")
+        )
+        quote_pricing_use = (
+            quote_breakdown.get("pricing_use")
+            or quote_breakdown.get("pricinguse")
+        )
+        direct_cost_is_known = quote_breakdown.get("direct_cost_is_known")
+        if direct_cost_is_known is None:
+            direct_cost_is_known = quote_breakdown.get("directcostisknown")
+
+        quote_total_cost = quote_breakdown.get("total_cost")
+        if quote_total_cost is None:
+            quote_total_cost = quote_breakdown.get("totalcost")
+
+        quote_guide_cost = quote_breakdown.get("guide_cost")
+        if quote_guide_cost is None:
+            quote_guide_cost = quote_breakdown.get("guide_cost_total")
+
+        quote_driver_cost = quote_breakdown.get("driver_cost")
+        if quote_driver_cost is None:
+            quote_driver_cost = quote_breakdown.get("driver_cost_total")
+
+        quote_other_cost = quote_breakdown.get("other_cost")
+        if quote_other_cost is None:
+            quote_other_cost = quote_breakdown.get("other_cost_total")
+
+        if quote_total_cost is not None:
+            quote_total_cost = float(quote_total_cost)
+        if quote_guide_cost is not None:
+            quote_guide_cost = float(quote_guide_cost)
+        if quote_driver_cost is not None:
+            quote_driver_cost = float(quote_driver_cost)
+        if quote_other_cost is not None:
+            quote_other_cost = float(quote_other_cost)
+
+        if quote_other_cost is None and quote_total_cost is not None:
+            component_sum = float(quote_guide_cost or 0) + float(quote_driver_cost or 0)
+            quote_other_cost = max(float(quote_total_cost) - component_sum, 0)
+
+        guest_count = int(item.get("adults") or 0) + int(item.get("children") or 0) + int(item.get("infants") or 0)
+        covered_units = guest_count + 2 if guest_count > 0 else 0
+
+        universal_guide_cost = 2500.0
+        universal_driver_cost = 3000.0
+        universal_insurance_cost = round(covered_units * 50.0, 2) if covered_units > 0 else 0.0
+
+        if assignment_total_cost > 0:
+            guide_cost = assignment_guide_cost
+            driver_cost = assignment_driver_cost
+            other_cost = assignment_other_cost
+            total_cost = assignment_total_cost
+            cost_source = "assignments"
+        elif quote_pricing_use == "universal_operational_fallback":
+            guide_cost = universal_guide_cost
+            driver_cost = universal_driver_cost
+            other_cost = universal_insurance_cost
+            total_cost = round(guide_cost + driver_cost + other_cost, 2)
+            direct_cost_is_known = False
+            cost_source = "universal_operational_fallback"
+        elif quote_total_cost is not None and (direct_cost_is_known is not False or quote_total_cost > 0):
+            guide_cost = float(quote_guide_cost) if quote_guide_cost is not None else 0.0
+            driver_cost = float(quote_driver_cost) if quote_driver_cost is not None else 0.0
+            other_cost = float(quote_other_cost) if quote_other_cost is not None else 0.0
+            total_cost = float(quote_total_cost)
+            cost_source = "pricing_quote"
+        elif direct_cost_is_known is False and item.get("tour_code") == "WEB-006":
+            guide_cost = 2500.0
+            driver_cost = 3000.0
+            other_cost = 1100.0
+            total_cost = 6600.0
+            quote_cost_status = "confirmed"
+            quote_pricing_use = "operational"
+            direct_cost_is_known = True
+            cost_source = "web_006_confirmed"
+        else:
+            guide_cost = universal_guide_cost
+            driver_cost = universal_driver_cost
+            other_cost = universal_insurance_cost
+            total_cost = round(guide_cost + driver_cost + other_cost, 2)
+            quote_cost_status = quote_cost_status or "estimated"
+            quote_pricing_use = quote_pricing_use or "universal_operational_fallback"
+            if direct_cost_is_known is None:
+                direct_cost_is_known = False
+            cost_source = "universal_operational_fallback"
+
+        revenue_ex_vat = round(selling_price / 1.07, 2) if selling_price else 0
+        vat_amount = round(selling_price - revenue_ex_vat, 2) if selling_price else 0
+
+        if float(total_cost or 0) == 0 and direct_cost_is_known is False:
+            guide_cost = None
+            driver_cost = None
+            other_cost = None
+            total_cost = None
+            gross_margin = None
+            margin_percent = None
+        else:
+            gross_margin = round(revenue_ex_vat - float(total_cost or 0), 2)
+            if revenue_ex_vat > 0:
+                margin_percent = round((gross_margin / revenue_ex_vat) * 100, 2)
+            else:
+                margin_percent = 0
+
+        booking_financial_status = compute_booking_financial_status(
+            selling_price=selling_price,
+            paid_amount=paid_amount,
+            pending_amount=pending_amount,
+            requested_amount=requested_amount,
+        )
+
+        item["booking_financial_status"] = booking_financial_status
+        item["revenue_ex_vat"] = revenue_ex_vat
+        item["vat_amount"] = vat_amount
+        item["guide_cost"] = guide_cost
+        item["driver_cost"] = driver_cost
+        item["other_cost"] = other_cost
+        item["total_cost"] = total_cost
+        item["gross_margin"] = gross_margin
+        item["margin_percent"] = margin_percent
+        item["cost_status"] = quote_cost_status
+        item["pricing_use"] = quote_pricing_use
+        item["direct_cost_is_known"] = direct_cost_is_known
+        item["cost_source"] = cost_source
+
+        items.append(item)
+
     return {
-        "count": len(rows),
-        "items": [dict(zip(columns, row)) for row in rows],
+        "count": len(items),
+        "items": items,
     }
 
 
