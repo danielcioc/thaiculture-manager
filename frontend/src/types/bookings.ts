@@ -91,12 +91,17 @@ export type BookingDetailResponse = {
   };
   assignments: Assignment[];
   operations_summary: {
-    guide_cost: number;
-    driver_cost: number;
-    other_cost: number;
-    total_cost: number;
-    gross_margin: number;
-    margin_percent: number;
-    currency: string;
+    selling_price?: number | null;
+    guide_cost: number | null;
+    driver_cost: number | null;
+    other_cost: number | null;
+    total_cost: number | null;
+    gross_margin: number | null;
+    margin_percent: number | null;
+    currency: string | null;
+    cost_status?: string | null;
+    pricing_use?: string | null;
+    direct_cost_is_known?: boolean | null;
+    cost_source?: string | null;
   };
 };

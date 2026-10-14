@@ -19,14 +19,31 @@ type BookingDetailProps = {
 function formatTitle(value: string | null | undefined) {
   if (!value) return '-';
 
-  const normalized = value.toLowerCase().replace(/[_\s-]+/g, '');
+  const normalized = value.toLowerCase().replace(/[_\\s-]+/g, '');
   if (bookingFinancialStatusLabel[normalized]) return bookingFinancialStatusLabel[normalized];
 
   return value
-    .split(/[_\s-]+/)
+    .split(/[_\\s-]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
+}
+
+function formatPricingBasis(pricingUse: string | null | undefined) {
+  if (!pricingUse) return '-';
+
+  const normalized = pricingUse.toLowerCase().replace(/[_\\s-]+/g, '');
+  if (normalized.includes('person')) return 'Displayed per person';
+  if (normalized.includes('booking') || normalized.includes('group') || normalized.includes('private')) {
+    return 'Displayed per booking';
+  }
+
+  return formatTitle(pricingUse);
+}
+
+function formatBooleanLabel(value: boolean | null | undefined) {
+  if (value === null || value === undefined) return '-';
+  return value ? 'Yes' : 'No';
 }
 
 function DetailPair({
@@ -177,15 +194,42 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
 
             <div className="stack">
               <section className="panel">
-                <h2>Operations Summary</h2>
+                <div className="section-header">
+                  <div>
+                    <h2 style={{ margin: 0 }}>Operations Summary</h2>
+                    <p className="section-subtitle">Pricing and operational cost detail</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {operations_summary.cost_status && (
+                      <span className={`meta-pill ${getStatusClass(operations_summary.cost_status)}`}>
+                        Cost: {formatTitle(operations_summary.cost_status)}
+                      </span>
+                    )}
+                    {operations_summary.pricing_use && (
+                      <span className={`meta-pill ${getStatusClass(operations_summary.pricing_use)}`}>
+                        Use: {formatTitle(operations_summary.pricing_use)}
+                      </span>
+                    )}
+                    {operations_summary.direct_cost_is_known !== null && operations_summary.direct_cost_is_known !== undefined && (
+                      <span className={`meta-pill ${getStatusClass(operations_summary.direct_cost_is_known ? 'Paid' : 'Pending')}`}>
+                        Direct cost known: {formatBooleanLabel(operations_summary.direct_cost_is_known)}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 <div className="detail-list">
+                  <div className="detail-row"><span className="label">Revenue</span><span>{formatCurrency(payment_summary.selling_price, payment_summary.currency)}</span></div>
+                  <div className="detail-row"><span className="label">Revenue Basis</span><span>{formatPricingBasis(operations_summary.pricing_use)}</span></div>
+                  <div className="detail-row"><span className="label">Pricing Use</span><span>{formatTitle(operations_summary.pricing_use)}</span></div>
+                  <div className="detail-row"><span className="label">Cost Status</span><span>{formatTitle(operations_summary.cost_status)}</span></div>
+                  <div className="detail-row"><span className="label">Direct Cost Known</span><span>{formatBooleanLabel(operations_summary.direct_cost_is_known)}</span></div>
                   <div className="detail-row"><span className="label">Guide Cost</span><span>{formatCurrency(operations_summary.guide_cost, operations_summary.currency)}</span></div>
                   <div className="detail-row"><span className="label">Driver Cost</span><span>{formatCurrency(operations_summary.driver_cost, operations_summary.currency)}</span></div>
                   <div className="detail-row"><span className="label">Other Cost</span><span>{formatCurrency(operations_summary.other_cost, operations_summary.currency)}</span></div>
                   <div className="detail-row"><span className="label">Total Cost</span><span>{formatCurrency(operations_summary.total_cost, operations_summary.currency)}</span></div>
                   <div className="detail-row"><span className="label">Gross Margin</span><span>{formatCurrency(operations_summary.gross_margin, operations_summary.currency)}</span></div>
-                  <div className="detail-row"><span className="label">Margin %</span><span>{operations_summary.margin_percent}%</span></div>
+                  <div className="detail-row"><span className="label">Margin %</span><span>{operations_summary.margin_percent ?? '-'}{operations_summary.margin_percent !== null && operations_summary.margin_percent !== undefined ? '%' : ''}</span></div>
                 </div>
               </section>
 
