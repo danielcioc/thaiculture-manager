@@ -545,28 +545,28 @@ def get_booking_full_detail(booking_code: str):
                 booking_financial_status = "depositrequested"
             else:
                 booking_financial_status = "unpaid"
+            tour_code = booking_data.get("tour_code")
 
             assignment_guide_cost = float(cost_totals[0] or 0)
             assignment_driver_cost = float(cost_totals[1] or 0)
             assignment_other_cost = float(cost_totals[2] or 0)
             assignment_total_cost = float(cost_totals[3] or 0)
 
+            quote_cost_status = None
+            quote_pricing_use = None
+            direct_cost_is_known = None
             quote_total_cost = None
             quote_guide_cost = None
             quote_driver_cost = None
             quote_other_cost = None
-            quote_cost_status = None
-            quote_pricing_use = None
-            direct_cost_is_known = None
             cost_source = "assignments"
-            tour_code = booking_data.get("tour_code")
 
             cur.execute(
                 """
-                SELECT total_cost, breakdown
+                SELECT breakdown
                 FROM pricing_quotes
                 WHERE booking_id = %s
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, id DESC
                 LIMIT 1
                 """,
                 (booking_data["id"],),
@@ -574,31 +574,58 @@ def get_booking_full_detail(booking_code: str):
             quote_row = cur.fetchone()
 
             if quote_row:
-                quote_total_cost = float(quote_row[0]) if quote_row[0] is not None else None
-                quote_breakdown = quote_row[1] or {}
-
-                quote_cost_status = quote_breakdown.get("cost_status")
-                quote_pricing_use = quote_breakdown.get("pricing_use")
+                quote_breakdown = quote_row[0] or {}
+                quote_cost_status = (
+                    quote_breakdown.get("cost_status")
+                    or quote_breakdown.get("coststatus")
+                )
+                quote_pricing_use = (
+                    quote_breakdown.get("pricing_use")
+                    or quote_breakdown.get("pricinguse")
+                )
                 direct_cost_is_known = quote_breakdown.get("direct_cost_is_known")
+                if direct_cost_is_known is None:
+                    direct_cost_is_known = quote_breakdown.get("directcostisknown")
+
+                quote_total_cost = quote_breakdown.get("total_cost")
+                if quote_total_cost is None:
+                    quote_total_cost = quote_breakdown.get("totalcost")
 
                 quote_guide_cost = quote_breakdown.get("guide_cost")
-                quote_driver_cost = quote_breakdown.get("driver_cost")
-                quote_other_cost = quote_breakdown.get("other_cost")
-
                 if quote_guide_cost is None:
                     quote_guide_cost = quote_breakdown.get("guide_cost_total")
+
+                quote_driver_cost = quote_breakdown.get("driver_cost")
                 if quote_driver_cost is None:
                     quote_driver_cost = quote_breakdown.get("driver_cost_total")
+
+                quote_other_cost = quote_breakdown.get("other_cost")
                 if quote_other_cost is None:
                     quote_other_cost = quote_breakdown.get("other_cost_total")
 
-                if quote_other_cost is None:
-                    component_sum = sum(
-                        float(value or 0)
-                        for value in [quote_guide_cost, quote_driver_cost]
-                    )
-                    if quote_total_cost is not None:
-                        quote_other_cost = max(float(quote_total_cost) - component_sum, 0)
+                if quote_total_cost is not None:
+                    quote_total_cost = float(quote_total_cost)
+                if quote_guide_cost is not None:
+                    quote_guide_cost = float(quote_guide_cost)
+                if quote_driver_cost is not None:
+                    quote_driver_cost = float(quote_driver_cost)
+                if quote_other_cost is not None:
+                    quote_other_cost = float(quote_other_cost)
+
+                if quote_other_cost is None and quote_total_cost is not None:
+                    component_sum = float(quote_guide_cost or 0) + float(quote_driver_cost or 0)
+                    quote_other_cost = max(float(quote_total_cost) - component_sum, 0)
+
+            guest_count = (
+                int(booking_data.get("adults") or 0)
+                + int(booking_data.get("children") or 0)
+                + int(booking_data.get("infants") or 0)
+            )
+            covered_units = guest_count + 2 if guest_count > 0 else 0
+
+            universal_guide_cost = 2500.0
+            universal_driver_cost = 3000.0
+            universal_insurance_cost = round(covered_units * 50.0, 2) if covered_units > 0 else 0.0
 
             if assignment_total_cost > 0:
                 guide_cost = assignment_guide_cost
@@ -606,10 +633,17 @@ def get_booking_full_detail(booking_code: str):
                 other_cost = assignment_other_cost
                 total_cost = assignment_total_cost
                 cost_source = "assignments"
+            elif quote_pricing_use == "universal_operational_fallback":
+                guide_cost = universal_guide_cost
+                driver_cost = universal_driver_cost
+                other_cost = universal_insurance_cost
+                total_cost = round(guide_cost + driver_cost + other_cost, 2)
+                direct_cost_is_known = False
+                cost_source = "universal_operational_fallback"
             elif quote_total_cost is not None and (direct_cost_is_known is not False or quote_total_cost > 0):
-                guide_cost = float(quote_guide_cost) if quote_guide_cost is not None else None
-                driver_cost = float(quote_driver_cost) if quote_driver_cost is not None else None
-                other_cost = float(quote_other_cost) if quote_other_cost is not None else None
+                guide_cost = float(quote_guide_cost) if quote_guide_cost is not None else 0.0
+                driver_cost = float(quote_driver_cost) if quote_driver_cost is not None else 0.0
+                other_cost = float(quote_other_cost) if quote_other_cost is not None else 0.0
                 total_cost = float(quote_total_cost)
                 cost_source = "pricing_quote"
             elif direct_cost_is_known is False and tour_code == "WEB-006":
@@ -617,30 +651,37 @@ def get_booking_full_detail(booking_code: str):
                 driver_cost = 3000.0
                 other_cost = 1100.0
                 total_cost = 6600.0
-                revenue_ex_vat = 10747.66
-                vat_amount = 752.34
                 quote_cost_status = "confirmed"
                 quote_pricing_use = "operational"
                 direct_cost_is_known = True
                 cost_source = "web_006_confirmed"
-            elif direct_cost_is_known is False:
+            else:
+                guide_cost = universal_guide_cost
+                driver_cost = universal_driver_cost
+                other_cost = universal_insurance_cost
+                total_cost = round(guide_cost + driver_cost + other_cost, 2)
+                quote_cost_status = quote_cost_status or "estimated"
+                quote_pricing_use = quote_pricing_use or "universal_operational_fallback"
+                if direct_cost_is_known is None:
+                    direct_cost_is_known = False
+                cost_source = "universal_operational_fallback"
+
+            revenue_ex_vat = round(selling_price / 1.07, 2) if selling_price else 0
+            vat_amount = round(selling_price - revenue_ex_vat, 2) if selling_price else 0
+
+            if float(total_cost or 0) == 0 and direct_cost_is_known is False:
                 guide_cost = None
                 driver_cost = None
                 other_cost = None
                 total_cost = None
-                cost_source = "unknown"
-            else:
-                guide_cost = assignment_guide_cost
-                driver_cost = assignment_driver_cost
-                other_cost = assignment_other_cost
-                total_cost = assignment_total_cost
-                cost_source = "assignments"
-
-            if total_cost is None:
                 gross_margin = None
                 margin_percent = None
             else:
-                gross_margin = round(revenue_ex_vat - total_cost, 2)
+                gross_margin = round(revenue_ex_vat - float(total_cost or 0), 2)
+                if revenue_ex_vat > 0:
+                    margin_percent = round((gross_margin / revenue_ex_vat) * 100, 2)
+                else:
+                    margin_percent = 0
                 if revenue_ex_vat > 0:
                     margin_percent = round((gross_margin / revenue_ex_vat) * 100, 2)
                 else:
