@@ -27,12 +27,74 @@ def dashboard_summary():
             payment_stats = cur.fetchone()
 
             cur.execute("""
+                WITH assignment_costs AS (
+                    SELECT
+                        booking_id,
+                        COALESCE(SUM(CASE WHEN assignment_type = 'guide' THEN cost ELSE 0 END), 0) AS guide_cost,
+                        COALESCE(SUM(CASE WHEN assignment_type = 'driver' THEN cost ELSE 0 END), 0) AS driver_cost,
+                        COALESCE(SUM(CASE WHEN assignment_type NOT IN ('guide', 'driver') THEN cost ELSE 0 END), 0) AS other_cost,
+                        COALESCE(SUM(cost), 0) AS total_cost
+                    FROM assignments
+                    GROUP BY booking_id
+                ),
+                latest_quotes AS (
+                    SELECT DISTINCT ON (booking_id)
+                        booking_id,
+                        total_cost,
+                        breakdown
+                    FROM pricing_quotes
+                    ORDER BY booking_id, created_at DESC
+                ),
+                resolved_costs AS (
+                    SELECT
+                        b.id AS booking_id,
+                        CASE
+                            WHEN COALESCE(ac.total_cost, 0) > 0 THEN ac.guide_cost
+                            WHEN lq.total_cost IS NOT NULL
+                                 AND (COALESCE((lq.breakdown ->> 'direct_cost_is_known')::boolean, true) = true OR lq.total_cost > 0)
+                                THEN COALESCE((lq.breakdown ->> 'guide_cost')::numeric, (lq.breakdown ->> 'guide_cost_total')::numeric, 0)
+                            ELSE 0
+                        END AS guide_cost,
+                        CASE
+                            WHEN COALESCE(ac.total_cost, 0) > 0 THEN ac.driver_cost
+                            WHEN lq.total_cost IS NOT NULL
+                                 AND (COALESCE((lq.breakdown ->> 'direct_cost_is_known')::boolean, true) = true OR lq.total_cost > 0)
+                                THEN COALESCE((lq.breakdown ->> 'driver_cost')::numeric, (lq.breakdown ->> 'driver_cost_total')::numeric, 0)
+                            ELSE 0
+                        END AS driver_cost,
+                        CASE
+                            WHEN COALESCE(ac.total_cost, 0) > 0 THEN ac.other_cost
+                            WHEN lq.total_cost IS NOT NULL
+                                 AND (COALESCE((lq.breakdown ->> 'direct_cost_is_known')::boolean, true) = true OR lq.total_cost > 0)
+                                THEN COALESCE(
+                                    (lq.breakdown ->> 'other_cost')::numeric,
+                                    (lq.breakdown ->> 'other_cost_total')::numeric,
+                                    GREATEST(
+                                        lq.total_cost
+                                        - COALESCE((lq.breakdown ->> 'guide_cost')::numeric, (lq.breakdown ->> 'guide_cost_total')::numeric, 0)
+                                        - COALESCE((lq.breakdown ->> 'driver_cost')::numeric, (lq.breakdown ->> 'driver_cost_total')::numeric, 0),
+                                        0
+                                    )
+                                )
+                            ELSE 0
+                        END AS other_cost,
+                        CASE
+                            WHEN COALESCE(ac.total_cost, 0) > 0 THEN ac.total_cost
+                            WHEN lq.total_cost IS NOT NULL
+                                 AND (COALESCE((lq.breakdown ->> 'direct_cost_is_known')::boolean, true) = true OR lq.total_cost > 0)
+                                THEN lq.total_cost
+                            ELSE 0
+                        END AS total_cost
+                    FROM bookings b
+                    LEFT JOIN assignment_costs ac ON ac.booking_id = b.id
+                    LEFT JOIN latest_quotes lq ON lq.booking_id = b.id
+                )
                 SELECT
-                    COALESCE(SUM(cost), 0) AS total_costs,
-                    COALESCE(SUM(CASE WHEN assignment_type = 'guide' THEN cost ELSE 0 END), 0) AS guide_costs,
-                    COALESCE(SUM(CASE WHEN assignment_type = 'driver' THEN cost ELSE 0 END), 0) AS driver_costs,
-                    COALESCE(SUM(CASE WHEN assignment_type NOT IN ('guide', 'driver') THEN cost ELSE 0 END), 0) AS other_costs
-                FROM assignments;
+                    COALESCE(SUM(total_cost), 0) AS total_costs,
+                    COALESCE(SUM(guide_cost), 0) AS guide_costs,
+                    COALESCE(SUM(driver_cost), 0) AS driver_costs,
+                    COALESCE(SUM(other_cost), 0) AS other_costs
+                FROM resolved_costs;
             """)
             cost_stats = cur.fetchone()
 

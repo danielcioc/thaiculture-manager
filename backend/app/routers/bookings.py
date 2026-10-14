@@ -516,68 +516,118 @@ def get_booking_full_detail(booking_code: str):
 
             cost_totals = cur.fetchone()
 
-    selling_price = booking_data["selling_price"]
+            selling_price = booking_data["selling_price"] or 0
 
-    paid_amount = payment_totals[0]
-    pending_amount = payment_totals[1]
-    requested_amount = payment_totals[2]
-    outstanding_amount = selling_price - paid_amount
-    remaining_unrequested_amount = selling_price - requested_amount
+            paid_amount = payment_totals[0] or 0
+            pending_amount = payment_totals[1] or 0
+            requested_amount = payment_totals[2] or 0
+            outstanding_amount = selling_price - paid_amount
+            remaining_unrequested_amount = selling_price - requested_amount
 
-    if paid_amount <= 0 and pending_amount <= 0:
-        payment_status = "Unpaid"
-    elif paid_amount >= selling_price:
-        payment_status = "Paid"
-    elif paid_amount > 0:
-        payment_status = "Partially Paid"
-    elif pending_amount > 0:
-        payment_status = "Payment Requested"
-    else:
-        payment_status = "Unpaid"
+            if paid_amount <= 0 and pending_amount <= 0:
+                payment_status = "Unpaid"
+            elif paid_amount >= selling_price:
+                payment_status = "Paid"
+            elif paid_amount > 0:
+                payment_status = "Partially Paid"
+            elif pending_amount > 0:
+                payment_status = "Payment Requested"
+            else:
+                payment_status = "Unpaid"
 
-    if paid_amount >= selling_price and selling_price > 0:
-        booking_financial_status = "paid"
-    elif paid_amount > 0:
-        booking_financial_status = "partiallypaid"
-    elif requested_amount > 0 or pending_amount > 0:
-        booking_financial_status = "depositrequested"
-    else:
-        booking_financial_status = "unpaid"
+            if paid_amount >= selling_price and selling_price > 0:
+                booking_financial_status = "paid"
+            elif paid_amount > 0:
+                booking_financial_status = "partiallypaid"
+            elif requested_amount > 0 or pending_amount > 0:
+                booking_financial_status = "depositrequested"
+            else:
+                booking_financial_status = "unpaid"
 
-    guide_cost = cost_totals[0]
-    driver_cost = cost_totals[1]
-    other_cost = cost_totals[2]
-    total_cost = cost_totals[3]
-    gross_margin = selling_price - total_cost
+            assignment_guide_cost = float(cost_totals[0] or 0)
+            assignment_driver_cost = float(cost_totals[1] or 0)
+            assignment_other_cost = float(cost_totals[2] or 0)
+            assignment_total_cost = float(cost_totals[3] or 0)
 
-    if selling_price and selling_price > 0:
-        margin_percent = round((gross_margin / selling_price) * 100, 2)
-    else:
-        margin_percent = 0
+            quote_total_cost = None
+            quote_guide_cost = None
+            quote_driver_cost = None
+            quote_other_cost = None
+            quote_cost_status = None
+            quote_pricing_use = None
+            direct_cost_is_known = None
+            cost_source = "assignments"
 
-    return {
-        "booking": booking_data,
-        "payments": payments,
-        "payment_summary": {
-            "selling_price": selling_price,
-            "paid_amount": paid_amount,
-            "pending_amount": pending_amount,
-            "requested_amount": requested_amount,
-            "outstanding_amount": outstanding_amount,
-            "remaining_unrequested_amount": remaining_unrequested_amount,
-            "payment_status": payment_status,
-            "booking_financial_status": booking_financial_status,
-            "currency": booking_data["currency"],
-        },
-        "assignments": assignments,
-        "operations_summary": {
-            "selling_price": selling_price,
-            "guide_cost": guide_cost,
-            "driver_cost": driver_cost,
-            "other_cost": other_cost,
-            "total_cost": total_cost,
-            "gross_margin": gross_margin,
-            "margin_percent": margin_percent,
-            "currency": booking_data["currency"],
-        },
-    }
+            cur.execute(
+                """
+                SELECT total_cost, breakdown
+                FROM pricing_quotes
+                WHERE booking_id = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (booking_data["id"],),
+            )
+            quote_row = cur.fetchone()
+
+            if quote_row:
+                quote_total_cost = float(quote_row[0]) if quote_row[0] is not None else None
+                quote_breakdown = quote_row[1] or {}
+
+                quote_cost_status = quote_breakdown.get("cost_status")
+                quote_pricing_use = quote_breakdown.get("pricing_use")
+                direct_cost_is_known = quote_breakdown.get("direct_cost_is_known")
+
+                quote_guide_cost = quote_breakdown.get("guide_cost")
+                quote_driver_cost = quote_breakdown.get("driver_cost")
+                quote_other_cost = quote_breakdown.get("other_cost")
+
+                if quote_guide_cost is None:
+                    quote_guide_cost = quote_breakdown.get("guide_cost_total")
+                if quote_driver_cost is None:
+                    quote_driver_cost = quote_breakdown.get("driver_cost_total")
+                if quote_other_cost is None:
+                    quote_other_cost = quote_breakdown.get("other_cost_total")
+
+                if quote_other_cost is None:
+                    component_sum = sum(
+                        float(value or 0)
+                        for value in [quote_guide_cost, quote_driver_cost]
+                    )
+                    if quote_total_cost is not None:
+                        quote_other_cost = max(float(quote_total_cost) - component_sum, 0)
+
+            if assignment_total_cost > 0:
+                guide_cost = assignment_guide_cost
+                driver_cost = assignment_driver_cost
+                other_cost = assignment_other_cost
+                total_cost = assignment_total_cost
+                cost_source = "assignments"
+            elif quote_total_cost is not None and (direct_cost_is_known is not False or quote_total_cost > 0):
+                guide_cost = float(quote_guide_cost) if quote_guide_cost is not None else None
+                driver_cost = float(quote_driver_cost) if quote_driver_cost is not None else None
+                other_cost = float(quote_other_cost) if quote_other_cost is not None else None
+                total_cost = float(quote_total_cost)
+                cost_source = "pricing_quote"
+            elif direct_cost_is_known is False:
+                guide_cost = None
+                driver_cost = None
+                other_cost = None
+                total_cost = None
+                cost_source = "unknown"
+            else:
+                guide_cost = assignment_guide_cost
+                driver_cost = assignment_driver_cost
+                other_cost = assignment_other_cost
+                total_cost = assignment_total_cost
+                cost_source = "assignments"
+
+            if total_cost is None:
+                gross_margin = None
+                margin_percent = None
+            else:
+                gross_margin = selling_price - total_cost
+                if selling_price > 0:
+                    margin_percent = round((gross_margin / selling_price) * 100, 2)
+                else:
+                    margin_percent = 0

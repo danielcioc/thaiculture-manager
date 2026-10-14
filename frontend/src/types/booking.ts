@@ -1,8 +1,9 @@
 export type BookingFull = {
   booking: {
+    id: string;
     booking_code: string;
     status: string;
-    source: string;
+    source: string | null;
     customer_name: string | null;
     customer_email: string | null;
     customer_phone: string | null;
@@ -13,6 +14,9 @@ export type BookingFull = {
     tour_name: string | null;
     tour_category: string | null;
     tour_duration_hours: number | null;
+    imported_raw_tour_name?: string | null;
+    mapping_status?: string | null;
+    needs_manual_review?: boolean | null;
     pickup_location_name: string | null;
     pickup_google_maps_url: string | null;
     dropoff_location_name: string | null;
@@ -28,6 +32,7 @@ export type BookingFull = {
     created_at: string | null;
   };
   payments: Array<{
+    id: string;
     amount: number;
     currency: string;
     method: string;
@@ -36,33 +41,39 @@ export type BookingFull = {
     reference: string | null;
   }>;
   payment_summary: {
-    selling_price: number;
-    paid_amount: number;
-    pending_amount: number;
-    requested_amount: number;
-    outstanding_amount: number;
-    remaining_unrequested_amount: number;
+    selling_price: number | null;
+    paid_amount: number | null;
+    pending_amount: number | null;
+    requested_amount: number | null;
+    outstanding_amount: number | null;
+    remaining_unrequested_amount: number | null;
     payment_status: string;
-    currency: string;
+    booking_financial_status?: string | null;
+    currency: string | null;
   };
   assignments: Array<{
+    id: string;
     assignment_type: string;
     guide_name: string | null;
     guide_phone: string | null;
     driver_name: string | null;
     driver_phone: string | null;
-    cost: number;
+    cost: number | null;
     status: string;
     notes: string | null;
   }>;
   operations_summary: {
-    selling_price: number;
-    guide_cost: number;
-    driver_cost: number;
-    other_cost: number;
-    total_cost: number;
-    gross_margin: number;
-    margin_percent: number;
-    currency: string;
+    selling_price: number | null;
+    guide_cost: number | null;
+    driver_cost: number | null;
+    other_cost: number | null;
+    total_cost: number | null;
+    gross_margin: number | null;
+    margin_percent: number | null;
+    currency: string | null;
+    cost_status?: string | null;
+    pricing_use?: string | null;
+    direct_cost_is_known?: boolean | null;
+    cost_source?: string | null;
   };
 };
