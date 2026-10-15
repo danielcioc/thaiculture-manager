@@ -5,6 +5,22 @@ import { generatePricingQuote } from '../services/api';
 import { formatCurrency, formatDate, formatDateTime, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
 
+const ELIGIBLE_QUOTE_BOOKING_STATUSES = new Set([
+  'inquiry',
+  'offer prepared',
+  'awaiting confirmation',
+]);
+
+function normalizeBookingStatus(status: string): string {
+  return status.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function getQuoteEligibilityMessage(status: string): string {
+  const normalizedStatus = normalizeBookingStatus(status);
+  if (!normalizedStatus) return 'Quote generation is unavailable because the booking status is unknown.';
+  return `Quote generation is unavailable for ${formatTitle(status)} bookings. It is allowed only for Inquiry, Offer Prepared, or Awaiting Confirmation.`;
+}
+
 const bookingFinancialStatusLabel: Record<string, string> = {
   unpaid: 'Unpaid',
   depositrequested: 'Deposit Requested',
@@ -201,7 +217,7 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
                 ) : (
                   <p>No quote has been generated under the new policy.</p>
                 )}
-                {booking.status.toLowerCase() !== 'confirmed' && (
+                {ELIGIBLE_QUOTE_BOOKING_STATUSES.has(normalizeBookingStatus(booking.status)) ? (
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'end', flexWrap: 'wrap', marginTop: '14px' }}>
                     <label style={{ display: 'grid', gap: '6px' }}>
                       Chosen final price, gross (optional)
@@ -218,9 +234,8 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
                       {generatingQuote ? 'Generating…' : 'Generate pricing quote'}
                     </button>
                   </div>
-                )}
-                {booking.status.toLowerCase() === 'confirmed' && (
-                  <p>Quote generation is unavailable for confirmed bookings.</p>
+                ) : (
+                  <p>{getQuoteEligibilityMessage(booking.status)}</p>
                 )}
                 {quoteError && <p role="alert">{quoteError}</p>}
               </section>

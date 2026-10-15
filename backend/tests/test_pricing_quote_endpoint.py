@@ -119,15 +119,59 @@ class PricingQuoteEndpointTests(unittest.TestCase):
         self.assertEqual(quote.margin_verdict, "meets_margin")
         self.assertTrue(any("FOR UPDATE" in query for query, _ in cursor.queries))
 
-    def test_confirmed_booking_is_refused_before_rule_or_insert(self):
-        cursor = FakeCursor(booking_status="Confirmed")
-        connection = FakeConnection(cursor)
-        with patch.object(pricing, "get_connection", return_value=connection):
-            with self.assertRaises(HTTPException) as error:
-                pricing.generate_pricing_quote("BOOKING-1", GeneratePricingQuoteRequest())
+    def test_all_allowed_booking_statuses_generate_quotes(self):
+        for status in ("Inquiry", "Offer Prepared", "Awaiting Confirmation"):
+            with self.subTest(status=status):
+                cursor = FakeCursor(booking_status=status)
+                connection = FakeConnection(cursor)
+                with patch.object(pricing, "get_connection", return_value=connection):
+                    quote = pricing.generate_pricing_quote(
+                        "BOOKING-1", GeneratePricingQuoteRequest()
+                    )
+                self.assertEqual(quote.booking_code, "BOOKING-1")
+                self.assertTrue(
+                    any("INSERT INTO pricing_quotes" in query for query, _ in cursor.queries)
+                )
 
-        self.assertEqual(error.exception.status_code, 409)
-        self.assertFalse(any("INSERT INTO pricing_quotes" in query for query, _ in cursor.queries))
+    def test_eligible_status_normalization_trims_and_ignores_case(self):
+        for status in (" inquiry ", "OFFER PREPARED", "  Awaiting   Confirmation  "):
+            with self.subTest(status=status):
+                cursor = FakeCursor(booking_status=status)
+                connection = FakeConnection(cursor)
+                with patch.object(pricing, "get_connection", return_value=connection):
+                    pricing.generate_pricing_quote("BOOKING-1", GeneratePricingQuoteRequest())
+                self.assertTrue(
+                    any("INSERT INTO pricing_quotes" in query for query, _ in cursor.queries)
+                )
+
+    def test_ineligible_and_unknown_statuses_are_refused_before_rule_or_insert(self):
+        for status in (
+            "Confirmed",
+            "Cancelled",
+            "Deposit Requested",
+            "Unexpected Status",
+            None,
+        ):
+            with self.subTest(status=status):
+                cursor = FakeCursor(booking_status=status)
+                connection = FakeConnection(cursor)
+                with patch.object(pricing, "get_connection", return_value=connection):
+                    with self.assertRaises(HTTPException) as error:
+                        pricing.generate_pricing_quote(
+                            "BOOKING-1", GeneratePricingQuoteRequest()
+                        )
+
+                self.assertEqual(error.exception.status_code, 409)
+                self.assertIn(
+                    "Inquiry, Offer Prepared, or Awaiting Confirmation",
+                    error.exception.detail,
+                )
+                self.assertFalse(
+                    any("FROM pricing_rules" in query for query, _ in cursor.queries)
+                )
+                self.assertFalse(
+                    any("INSERT INTO pricing_quotes" in query for query, _ in cursor.queries)
+                )
 
     def test_missing_vat_rejects_without_insert(self):
         calculation = {"direct_cost_total": 7350, "selling_price_gross": 10500}

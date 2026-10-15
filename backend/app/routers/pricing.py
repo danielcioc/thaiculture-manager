@@ -14,6 +14,15 @@ from app.pricing_policy import (
 
 router = APIRouter(prefix="/pricing", tags=["Pricing"])
 
+ELIGIBLE_QUOTE_BOOKING_STATUSES = frozenset(
+    {"inquiry", "offer prepared", "awaiting confirmation"}
+)
+ELIGIBLE_QUOTE_STATUS_LABELS = "Inquiry, Offer Prepared, or Awaiting Confirmation"
+
+
+def _normalize_booking_status(status: Any) -> str:
+    return " ".join(str(status or "").split()).casefold()
+
 
 def _to_float(value: Any) -> Optional[float]:
     if value is None:
@@ -198,10 +207,16 @@ def generate_pricing_quote(
             if booking is None:
                 raise HTTPException(status_code=404, detail="Booking not found")
             booking_id, booking_status, tour_id = booking
-            if str(booking_status).strip().casefold() == "confirmed":
+            if (
+                _normalize_booking_status(booking_status)
+                not in ELIGIBLE_QUOTE_BOOKING_STATUSES
+            ):
                 raise HTTPException(
                     status_code=409,
-                    detail="Pricing quote generation is refused for confirmed bookings",
+                    detail=(
+                        "Pricing quote generation is allowed only for bookings with status "
+                        f"{ELIGIBLE_QUOTE_STATUS_LABELS}"
+                    ),
                 )
 
             cur.execute(
