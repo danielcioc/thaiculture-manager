@@ -1,5 +1,19 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-15 importer resolver unification checkpoint
+
+### What was done
+
+- Made `backend/import_rules.py::resolve_tour_mapping` the single source of truth for imported tour labels; removed the duplicate tour maps and resolver from `backend/import_thaiculture_data.py`.
+- The importer resolves each label once and passes only a `confirmed` canonical name to `pick_tour`. `probable_manual_review` and `unmapped` preserve the raw label and review metadata while leaving `tour_id` null.
+- Booking status, booking deduplication, and payments were not changed. No operational database was accessed, and no compatibility SQL was applied.
+
+### Verification
+
+- Relevant `import_rules` and booking-import tests: 7 passed.
+- Full `test_import*.py` discovery: 10 passed, 1 pre-existing payments test failed because its fixture has no `amount` while expecting an insert. Payments code and test logic were outside this phase.
+- `git diff --check` passed. The change remains local and has not been pushed.
+
 ## 2026-10-15 financial contract v1 and documentation checkpoint
 
 ### What was done

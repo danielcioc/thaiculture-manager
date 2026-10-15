@@ -4,6 +4,7 @@ import uuid
 from pathlib import Path
 
 import psycopg
+from import_rules import resolve_tour_mapping
 
 import os
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://tct_admin:tct_local_password@localhost:5433/thaiculture_manager")
@@ -23,32 +24,6 @@ STATUS_MAP = {
 }
 
 LANG_MAP = {"RO": "RO", "EN": "EN", "FR": "FR"}
-
-TOUR_NAME_MAP = {
-    "Evening Ayutthaya UNESCO Temples Tour (privat)": "Evening in Ayutthaya",
-    "Whale Tour": "Whale Safari",
-    "Whale Tour (nespecificat)": "Whale Safari",
-    "Hua Hin Temple Tour – Cultural Day Trip": "Hua Hin Temple Tour",
-    "Hua Hin – Bangkok Day Trip": "1-Day Trip – Hua Hin → Bangkok",
-    "Kui Buri National Park – Elephant Watching": "Elephant Watching in Kui Buri National Park",
-    "Classic Bangkok": "Classic Bangkok",
-    "Mystic Bangkok": "Mystic Bangkok",
-    "Uthai Thani / Sacred River": "Uthai Thani Sacred River & Hidden Heritage",
-    "Ayutthaya 5 Highlights": "Ayutthaya: 5 Essential Sights",
-    "Ayutthaya UNESCO Full Day Tour (grup)": "Ayutthaya: 5 Essential Sights",
-    "Ayutthaya Tour (privat – GetYourGuide)": "Ayutthaya: 5 Essential Sights",
-    "Amphawa Floating Market": "Amphawa: The City on Water",
-    "Amphawa Extended Tour + Wat Samphran (privat)": "Amphawa: The City on Water",
-    "Khao Yai National Park – Full Day (grup)": "Khao Yai National Park – Full Day",
-    "Kanchanaburi – River Kwai + Erawan Falls (grup)": "Kanchanaburi: River Kwai & Erawan Falls",
-}
-
-REVIEW_REQUIRED_TOURS = {
-    "Whale Tour",
-    "Uthai Thani / Sacred River",
-    "Ayutthaya 5 Highlights",
-    "Amphawa Floating Market",
-}
 
 def split_name(display_name: str):
     if not display_name:
@@ -117,23 +92,8 @@ def get_or_create_customer(cur, display_name: str, email: str, language: str, no
     )
     return customer_id
 
-def resolve_tour_mapping(booking_tour_name: str):
-    raw_name = (booking_tour_name or "").strip()
-
-    if raw_name in TOUR_NAME_MAP:
-        return TOUR_NAME_MAP[raw_name], "confirmed", False
-
-    if raw_name in REVIEW_REQUIRED_TOURS:
-        return None, "probable_manual_review", True
-
-    return None, "unmapped", True
-
-
-def pick_tour(cur, booking_tour_name: str):
-    raw_name = (booking_tour_name or "").strip()
-    canonical_name, _, _ = resolve_tour_mapping(raw_name)
-
-    if canonical_name is None:
+def pick_tour(cur, approved_canonical_name: str | None):
+    if approved_canonical_name is None:
         return None
 
     cur.execute(
@@ -143,7 +103,7 @@ def pick_tour(cur, booking_tour_name: str):
         WHERE lower(name) = lower(%s)
         LIMIT 1
         """,
-        (canonical_name,),
+        (approved_canonical_name,),
     )
     row = cur.fetchone()
     return row[0] if row else None
@@ -176,7 +136,8 @@ def import_bookings(cur):
             )
             pickup_location_id = get_or_create_location(cur, row["hotel_location"])
             canonical_tour_name, mapping_status, needs_manual_review = resolve_tour_mapping(row["tour"])
-            tour_id = pick_tour(cur, row["tour"])
+            approved_tour_name = canonical_tour_name if mapping_status == "confirmed" else None
+            tour_id = pick_tour(cur, approved_tour_name)
 
             tour_date = row["tour_date"].strip() if row["tour_date"] and not row["tour_date"].startswith("~") else None
             people_raw = (row["people"] or "").strip()

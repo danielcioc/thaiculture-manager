@@ -32,6 +32,81 @@ class ImportRulesTests(unittest.TestCase):
 
 
 class ImporterSafetyTests(unittest.TestCase):
+    def test_import_booking_uses_canonical_mapping_and_only_links_confirmed_tours(self):
+        cases = (
+            (
+                "Evening Ayutthaya UNESCO Temples Tour (privat)",
+                ("Evening in Ayutthaya", "confirmed", False),
+                "tour-confirmed",
+                "Evening in Ayutthaya",
+            ),
+            (
+                " Whale Tour (nespecificat) ",
+                ("Whale Safari", "probable_manual_review", True),
+                None,
+                None,
+            ),
+            (
+                "Unknown custom tour",
+                (None, "unmapped", True),
+                None,
+                None,
+            ),
+        )
+
+        for raw_tour_name, expected_mapping, expected_tour_id, expected_lookup in cases:
+            with self.subTest(mapping_status=expected_mapping[1]):
+                row = {
+                    "customer_name": "Importer Test",
+                    "email": "importer@example.test",
+                    "language": "EN",
+                    "notes": "test",
+                    "hotel_location": "",
+                    "tour": raw_tour_name,
+                    "tour_date": "2026-11-01",
+                    "people": "2",
+                    "status": "Confirmat / Efectuat",
+                    "price_thb": "1000",
+                    "booking_code": "TCT-IMP-TEST-0001",
+                }
+                cursor = MagicMock()
+                cursor.fetchone.return_value = (expected_tour_id, "Canonical tour", "TEST")
+
+                with patch("pathlib.Path.open", mock_open(read_data="header\nrow\n")), patch.object(
+                    importer.csv, "DictReader", return_value=[row]
+                ), patch.object(
+                    importer, "get_or_create_customer", return_value="customer-1"
+                ), patch.object(
+                    importer, "get_or_create_location", return_value=None
+                ), patch.object(
+                    importer, "existing_booking", return_value=None
+                ), patch.object(
+                    importer,
+                    "resolve_tour_mapping",
+                    wraps=resolve_tour_mapping,
+                ) as resolver:
+                    importer.import_bookings(cursor)
+
+                resolver.assert_called_once_with(raw_tour_name)
+                booking_insert = next(
+                    call for call in cursor.execute.call_args_list
+                    if "INSERT INTO bookings" in call.args[0]
+                )
+                inserted_values = booking_insert.args[1]
+                self.assertEqual(inserted_values[5], expected_tour_id)
+                self.assertEqual(inserted_values[14], raw_tour_name)
+                self.assertEqual(inserted_values[15:17], expected_mapping[1:])
+
+                tour_lookups = [
+                    call for call in cursor.execute.call_args_list
+                    if "FROM tours" in call.args[0]
+                ]
+                if expected_lookup is None:
+                    self.assertEqual(tour_lookups, [])
+                else:
+                    self.assertEqual(len(tour_lookups), 1)
+                    self.assertEqual(tour_lookups[0].args[1], (expected_lookup,))
+
     @patch.object(importer, "get_or_create_customer", return_value="customer-1")
     @patch.object(importer, "get_or_create_location", return_value=None)
     @patch.object(
