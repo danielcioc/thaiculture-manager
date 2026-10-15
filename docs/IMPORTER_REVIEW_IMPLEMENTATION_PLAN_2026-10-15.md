@@ -1,6 +1,6 @@
 # Importer Review Mechanism — Design Note
 
-Status: proposed; no implementation or database changes have been made.
+Status: schema compatibility migration implemented and validated in isolated PostgreSQL; importer resolver unified and published. Remaining importer-review work is pending.
 Scope: historical booking import review and safe re-runs. This plan does not include pricing, financial contract, Dashboard KPI, or website integration work.
 
 ## 1. Schema compatibility
@@ -18,6 +18,8 @@ The versioned `bookings` definition does not declare the following columns:
 However, `backend/import_thaiculture_data.py` inserts all three, and the booking list/detail queries in `backend/app/routers/bookings.py` select them. The frontend types and views also consume them. The checked-in schema therefore cannot, by itself, initialize the schema expected by the current importer and API.
 
 This is a comparison of repository files only. The operational database will not be connected to, so the runtime catalog and whether it already has these columns remain unverified.
+
+The additive migration `database/migrations/20261015_add_booking_import_review_metadata.sql` adds the three nullable columns with `ADD COLUMN IF NOT EXISTS`. It was applied twice successfully to isolated PostgreSQL. It has not been applied to the operational database. No default, `NOT NULL`, `CHECK`, or backfill was added.
 
 ### Non-destructive compatibility options
 
@@ -109,4 +111,4 @@ Run these tests only against an isolated PostgreSQL database and pure unit tests
 6. Create a separate local implementation commit after review.
 7. Push separately only after explicit approval.
 
-Until the decisions above are approved, this remains a design note: no code, database, fixtures, or operational records have been changed.
+The schema compatibility migration and resolver-unification checkpoint are implemented. The remaining decisions and importer idempotency/test work above remain open; no operational database, operational records, or payments were changed as part of these checkpoints.

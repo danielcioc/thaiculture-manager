@@ -12,7 +12,23 @@
 
 - Relevant `import_rules` and booking-import tests: 7 passed.
 - Full `test_import*.py` discovery: 10 passed, 1 pre-existing payments test failed because its fixture has no `amount` while expecting an insert. Payments code and test logic were outside this phase.
-- `git diff --check` passed. The change remains local and has not been pushed.
+- `git diff --check` passed. Commit `fb62159` was subsequently published on `origin/main`.
+
+## 2026-10-15 importer review schema and isolated import checkpoint
+
+### What was done
+
+- Added `database/migrations/20261015_add_booking_import_review_metadata.sql` with nullable `imported_raw_tour_name`, `mapping_status varchar(40)`, and `needs_manual_review` columns using `ADD COLUMN IF NOT EXISTS`.
+- Applied `database/init/001_schema.sql` and the migration twice in a dedicated isolated PostgreSQL database. The second application skipped existing columns successfully.
+- Kept `database/init/001_schema.sql` unchanged. No default, `NOT NULL`, `CHECK`, or backfill was added; the migration was not applied to the operational database.
+- In the isolated importer run, 10 fixture bookings were processed: 7 confirmed with tour links and 3 probable-review rows with null `tour_id`. Raw labels were preserved. A second run left the count at 10 with no duplicate booking codes.
+- Current booking status behavior remained 8 `Confirmed`, 1 `Pending`, and 1 `Cancelled`. Payments remained at 0 because the fixture CSV has no `amount`; payment code and semantics were not changed.
+- The isolated test database, volume, network, and temporary files were removed. The operational database was not accessed.
+
+### Verification
+
+- Relevant `import_rules` and importer tests: 7 passed.
+- Isolated schema checks confirmed the three columns are nullable with no defaults and no mapping CHECK constraint.
 
 ## 2026-10-15 financial contract v1 and documentation checkpoint
 

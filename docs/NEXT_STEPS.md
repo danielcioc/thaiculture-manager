@@ -10,12 +10,13 @@ Last updated: 2026-10-15
 - The `WEB-027` and `WEB-028` mappings are business-confirmed.
 - `backend/import_rules.py::resolve_tour_mapping` is the sole tour-label resolver. Importer mapping now runs once per booking; only `confirmed` creates a canonical `tour_id`, while `probable_manual_review` and `unmapped` keep `tour_id` null and preserve the raw label.
 - Resolver/importer tests passed (7 relevant tests). The `test_import*.py` suite retains one pre-existing payments fixture failure because its CSV has no `amount`; payment code and test logic were not changed.
-- The importer change did not connect to or write to the operational database. The isolated schema compatibility proposal remains unapplied.
+- The versioned importer-review metadata migration was applied twice in an isolated PostgreSQL test only. It has not been applied operationally; defaults, constraints, and backfill remain deferred.
+- The controlled importer run processed all 10 historical CSV fixtures; rerunning left 10 bookings with no duplicate booking codes. Payments remained at 0 in the isolated fixture because `payments.csv` has no `amount` column. No operational database was accessed.
 - Payment importer is protected against 0 THB artifacts.
 - Database currently contains 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations.
 - A minimal idempotent catalog-ingestion workflow now exists and was validated successfully.
 - Pricing and financial-contract implementation commit `d728cfd` is published to `origin/main`.
-- The documentation update for this checkpoint is a separate local commit and has not been pushed yet.
+- Importer resolver checkpoint `fb62159` is published on `origin/main`.
 - The operational database was not modified during financial-contract work.
 - Database counts below are the last recorded snapshot from 2026-10-13 and were not re-queried for this checkpoint.
 
