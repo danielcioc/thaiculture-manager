@@ -50,29 +50,9 @@ def get_invoice(invoice_no: str):
 
             columns = [desc[0] for desc in cur.description]
 
-            cur.execute(
-                """
-                SELECT
-                    ii.id,
-                    ii.invoice_id,
-                    ii.booking_id,
-                    ii.description,
-                    ii.qty,
-                    ii.unit_amount,
-                    ii.line_amount,
-                    ii.service_date,
-                    b.booking_code
-                FROM invoice_items ii
-                LEFT JOIN bookings b ON b.id = ii.booking_id
-                WHERE ii.invoice_id = %s
-                ORDER BY ii.service_date NULLS LAST, ii.description ASC;
-                """,
-                (row[0],),
-            )
-            item_rows = cur.fetchall()
-            item_columns = [desc[0] for desc in cur.description]
-
     return {
         "invoice": dict(zip(columns, row)),
-        "items": [dict(zip(item_columns, r)) for r in item_rows],
+        # The current schema stores an invoice header and amount only; it has no
+        # invoice_items relation from which detail lines could be loaded.
+        "items": [],
     }

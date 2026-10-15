@@ -12,10 +12,10 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 class PaymentCreate(BaseModel):
     booking_id: UUID
-    amount: Decimal = Field(..., examples=["3000.00"])
-    currency: str = "THB"
-    method: str = Field(..., examples=["Thai QR"])
-    status: str = Field(default="Pending", examples=["Pending"])
+    amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2, examples=["3000.00"])
+    currency: str = Field(default="THB", min_length=3, max_length=3)
+    method: str = Field(..., min_length=1, max_length=40, examples=["Thai QR"])
+    status: str = Field(default="Pending", min_length=1, max_length=40, examples=["Pending"])
     paid_at: Optional[datetime] = None
     due_at: Optional[datetime] = None
     reference: Optional[str] = None
@@ -72,7 +72,7 @@ def create_payment(payload: PaymentCreate):
                         reference,
                         notes
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING
                         id,
                         booking_id,
@@ -81,7 +81,9 @@ def create_payment(payload: PaymentCreate):
                         method,
                         status,
                         paid_at,
-                        reference;
+                        due_at,
+                        reference,
+                        notes;
                 """, (
                     payload.booking_id,
                     payload.amount,
@@ -89,7 +91,9 @@ def create_payment(payload: PaymentCreate):
                     payload.method,
                     payload.status,
                     payload.paid_at,
+                    payload.due_at,
                     payload.reference,
+                    payload.notes,
                 ))
 
                 row = cur.fetchone()

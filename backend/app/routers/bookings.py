@@ -5,26 +5,10 @@ from datetime import date, time
 from decimal import Decimal
 
 from app.database import get_connection
+from app.financials import PAYMENT_TOTALS_SQL, booking_financial_summary
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
-
-
-def compute_booking_financial_status(
-    selling_price,
-    paid_amount,
-    pending_amount,
-    requested_amount,
-):
-    if paid_amount >= selling_price and selling_price > 0:
-        return "paid"
-    if paid_amount > 0 and paid_amount < selling_price:
-        if pending_amount > 0 or requested_amount > paid_amount:
-            return "partiallypaid"
-        return "depositpaid"
-    if paid_amount <= 0 and pending_amount > 0:
-        return "depositrequested"
-    return "unpaid"
 
 
 class BookingCreate(BaseModel):
@@ -49,7 +33,7 @@ class BookingCreate(BaseModel):
 def list_bookings(needs_manual_review: Optional[bool] = None):
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT
                     b.id,
                     b.booking_code,
@@ -105,11 +89,7 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                 LEFT JOIN locations dropoff ON dropoff.id = b.dropoff_location_id
 
                 LEFT JOIN (
-                    SELECT
-                        booking_id,
-                        COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) AS paid_amount,
-                        COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) AS pending_amount,
-                        COALESCE(SUM(CASE WHEN status IN ('Paid', 'Pending') THEN amount ELSE 0 END), 0) AS requested_amount
+                    SELECT booking_id, {PAYMENT_TOTALS_SQL}
                     FROM payments
                     GROUP BY booking_id
                 ) pay ON pay.booking_id = b.id
@@ -263,12 +243,9 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
             else:
                 margin_percent = 0
 
-        booking_financial_status = compute_booking_financial_status(
-            selling_price=selling_price,
-            paid_amount=paid_amount,
-            pending_amount=pending_amount,
-            requested_amount=requested_amount,
-        )
+        booking_financial_status = booking_financial_summary(
+            selling_price, paid_amount, pending_amount
+        )["booking_financial_status"]
 
         item["booking_financial_status"] = booking_financial_status
         item["revenue_ex_vat"] = revenue_ex_vat
@@ -375,11 +352,8 @@ def get_booking_payment_summary(booking_code: str):
             booking_columns = [desc[0] for desc in cur.description]
             booking_data = dict(zip(booking_columns, booking))
 
-            cur.execute("""
-                SELECT
-                    COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) AS paid_amount,
-                    COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) AS pending_amount,
-                    COALESCE(SUM(CASE WHEN status IN ('Paid', 'Pending') THEN amount ELSE 0 END), 0) AS requested_amount
+            cur.execute(f"""
+                SELECT {PAYMENT_TOTALS_SQL}
                 FROM payments
                 WHERE booking_id = %s;
             """, (booking_data["id"],))
@@ -387,42 +361,15 @@ def get_booking_payment_summary(booking_code: str):
             payment_totals = cur.fetchone()
 
     selling_price = booking_data["selling_price"]
-    paid_amount = payment_totals[0]
-    pending_amount = payment_totals[1]
-    requested_amount = payment_totals[2]
-
-    outstanding_amount = selling_price - paid_amount
-    remaining_unrequested_amount = selling_price - requested_amount
-
-    if paid_amount <= 0 and pending_amount <= 0:
-        payment_status = "Unpaid"
-    elif paid_amount >= selling_price:
-        payment_status = "Paid"
-    elif paid_amount > 0:
-        payment_status = "Partially Paid"
-    elif pending_amount > 0:
-        payment_status = "Payment Requested"
-    else:
-        payment_status = "Unpaid"
-
-    booking_financial_status = compute_booking_financial_status(
-        selling_price=selling_price,
-        paid_amount=paid_amount,
-        pending_amount=pending_amount,
-        requested_amount=requested_amount,
+    financial_summary = booking_financial_summary(
+        selling_price, payment_totals[0], payment_totals[1]
     )
 
     return {
         "booking_code": booking_data["booking_code"],
         "customer_name": booking_data["customer_name"],
         "selling_price": selling_price,
-        "paid_amount": paid_amount,
-        "pending_amount": pending_amount,
-        "requested_amount": requested_amount,
-        "outstanding_amount": outstanding_amount,
-        "remaining_unrequested_amount": remaining_unrequested_amount,
-        "payment_status": payment_status,
-        "booking_financial_status": booking_financial_status,
+        **financial_summary,
         "currency": booking_data["currency"],
     }
 
@@ -654,11 +601,8 @@ def get_booking_full_detail(booking_code: str):
             payments = [dict(zip(payment_columns, row)) for row in payment_rows]
 
             # Payment summary
-            cur.execute("""
-                SELECT
-                    COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) AS paid_amount,
-                    COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) AS pending_amount,
-                    COALESCE(SUM(CASE WHEN status IN ('Paid', 'Pending') THEN amount ELSE 0 END), 0) AS requested_amount
+            cur.execute(f"""
+                SELECT {PAYMENT_TOTALS_SQL}
                 FROM payments
                 WHERE booking_id = %s;
             """, (booking_data["id"],))
@@ -708,31 +652,18 @@ def get_booking_full_detail(booking_code: str):
             revenue_ex_vat = round(selling_price / 1.07, 2) if selling_price else 0
             vat_amount = round(selling_price - revenue_ex_vat, 2) if selling_price else 0
 
-            paid_amount = float(payment_totals[0] or 0)
-            pending_amount = float(payment_totals[1] or 0)
-            requested_amount = float(payment_totals[2] or 0)
-            outstanding_amount = selling_price - paid_amount
-            remaining_unrequested_amount = selling_price - requested_amount
-
-            if paid_amount <= 0 and pending_amount <= 0:
-                payment_status = "Unpaid"
-            elif paid_amount >= selling_price:
-                payment_status = "Paid"
-            elif paid_amount > 0:
-                payment_status = "Partially Paid"
-            elif pending_amount > 0:
-                payment_status = "Payment Requested"
-            else:
-                payment_status = "Unpaid"
-
-            if paid_amount >= selling_price and selling_price > 0:
-                booking_financial_status = "paid"
-            elif paid_amount > 0:
-                booking_financial_status = "partiallypaid"
-            elif requested_amount > 0 or pending_amount > 0:
-                booking_financial_status = "depositrequested"
-            else:
-                booking_financial_status = "unpaid"
+            financial_summary = booking_financial_summary(
+                selling_price,
+                float(payment_totals[0] or 0),
+                float(payment_totals[1] or 0),
+            )
+            paid_amount = financial_summary["paid_amount"]
+            pending_amount = financial_summary["pending_amount"]
+            requested_amount = financial_summary["requested_amount"]
+            outstanding_amount = financial_summary["outstanding_amount"]
+            remaining_unrequested_amount = financial_summary["remaining_unrequested_amount"]
+            payment_status = financial_summary["payment_status"]
+            booking_financial_status = financial_summary["booking_financial_status"]
             tour_code = booking_data.get("tour_code")
 
             assignment_guide_cost = float(cost_totals[0] or 0)
