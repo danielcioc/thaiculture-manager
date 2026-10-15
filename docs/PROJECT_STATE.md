@@ -13,6 +13,16 @@ ThaiCulture Manager este sistemul intern de operațiuni pentru ThaiCulture Tours
 - React + TypeScript + Vite frontend
 - Docker Compose local orchestration
 
+## Server-side authentication foundation
+
+- `backend/app/auth.py` provides reusable FastAPI dependencies for externally issued HS256 JWT validation, active-user lookup, and permission checks.
+- The JWT subject is resolved against `users` for each protected request; role permissions are loaded from the current `roles.permissions` JSONB value.
+- Permission JSON contract: a flat object mapping permission keys to booleans; only literal `true` grants access. No existing permission data or seed format was present in the repository.
+- Missing/invalid identity and unknown user return 401; inactive user or missing permission returns 403. Missing verifier settings fail closed with 503.
+- Auth settings are optional for the existing app, but protected dependencies cannot authenticate unless `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, and `AUTH_JWT_AUDIENCE` are configured. Secret values are never logged or returned.
+- No login/token issuance, development identity bypass, audit writing, or route-wide protection was added. Existing routes remain as before; future protected endpoints must opt into the dependency.
+- Authentication tests: 10 passed with database access mocked. No database was accessed.
+
 ## Last verified operational database snapshot
 
 The counts below were last verified on 2026-10-13. They were not re-read during the 2026-10-15 financial-contract work; no operational database writes were made.

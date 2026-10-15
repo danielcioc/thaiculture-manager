@@ -1,5 +1,22 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-15 server-side authentication and authorization foundation
+
+### What was done
+
+- Inspected the versioned users/roles schema, dependencies, routers, config, and tests. No auth middleware/dependency, login/token issuer, external auth library, permission seed data, authorization checks, or audit-log writes exist in the app.
+- Added opt-in bearer JWT verification in `backend/app/auth.py`. It accepts HS256 only, validates signature, issuer, audience, expiry, optional not-before, and UUID subject; user active state and role permissions are reloaded from the database per request.
+- Added reusable `get_current_user` and `require_permission` dependencies. Missing/invalid identity and unknown user return 401; inactive user or missing permission return 403. Missing auth configuration returns 503 and never falls back to a development identity.
+- Added optional `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, and `AUTH_JWT_AUDIENCE` settings. The verifier requires a 32-byte minimum secret. No token issuance or route-wide enforcement was added.
+- Established the permission format because no real permission values or seeds exist in repository: flat JSON object with boolean permission keys; only literal `true` grants access.
+- The schema declares a generic `audit_log`, but no application code writes it. Audit persistence design remains a separate follow-up decision.
+
+### Verification and limits
+
+- `backend/tests/test_auth.py`: 10 passed using mocked DB connections; tests include missing/invalid identity and signature, unsupported algorithm, expired/wrong-issuer/audience token, unknown/inactive user, granted/denied permission, malformed permission shape, and missing verifier configuration.
+- Tests did not connect to PostgreSQL. No operational database was accessed.
+- Existing API routes remain unauthenticated until each route/router opts into these dependencies. A trusted issuer and key provisioning path are prerequisites before deploying a protected write endpoint.
+
 ## 2026-10-15 importer review visibility — read-only
 
 ### What was done

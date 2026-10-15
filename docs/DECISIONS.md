@@ -47,3 +47,12 @@ When starting a new session:
 - With no confirmed or Pending payment, the booking financial status is `unpaid`.
 - Proforma generation and mandatory full payment at least 48 hours before a tour remain outside the delivered task.
 - Dashboard KPI semantics and existing pricing formulas are not changed by this financial-contract decision.
+
+## Server-side authentication foundation — 2026-10-15
+
+- Protected dependencies validate externally issued JWTs using HS256 and require configured secret, issuer, and audience. No login/token-issuance route or development identity bypass is provided.
+- `roles.permissions` uses a JSON object mapping permission keys to booleans; only the literal value `true` grants a permission. No role-permission fixtures existed in the repository to establish a prior data format.
+- The user identity is the JWT `sub`, resolved against `users` on every request. Active state and current role permissions are read from PostgreSQL rather than trusted from token claims.
+- Missing or invalid credentials and unknown users return 401; inactive users and missing permissions return 403. Missing verifier configuration fails closed with 503.
+- The auth dependency is opt-in and has not been attached to existing routes. Before a write endpoint uses it, a trusted issuer/key provisioning path and route-level authorization must be configured and verified.
+- No operational database was accessed. Tests use mocked database connections.
