@@ -1,6 +1,6 @@
 # ThaiCulture Manager — Next Steps
 
-Last updated: 2026-10-13
+Last updated: 2026-10-15
 
 ## Confirmed current state
 
@@ -11,13 +11,16 @@ Last updated: 2026-10-13
 - Payment importer is protected against 0 THB artifacts.
 - Database currently contains 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations.
 - A minimal idempotent catalog-ingestion workflow now exists and was validated successfully.
-- Latest commits are pushed to `main`.
+- Pricing and financial-contract implementation commit `d728cfd` is published to `origin/main`.
+- The documentation update for this checkpoint is a separate local commit and has not been pushed yet.
+- The operational database was not modified during financial-contract work.
+- Database counts below are the last recorded snapshot from 2026-10-13 and were not re-queried for this checkpoint.
 
-## Immediate next priority
+## Immediate next priority: importer review and data governance
 
-Evolve the catalog-ingestion workflow from local JSON export into a more durable website/catalog refresh path, without losing the safe upsert behavior on `tour_code`.
+Continue the already documented importer-review mechanism: preserve raw source values, keep deterministic mappings, and make ambiguous or unmapped records visible for business review. Do not make website integration the next task before the broader internal model is aligned.
 
-## Required behavior
+## Existing catalog-ingestion safeguards
 
 - Keep `backend/data/catalog/tours.json` as a controlled canonical input until website-sourced refresh is implemented.
 - Keep `backend/ingest_catalog.py` idempotent.
@@ -25,15 +28,6 @@ Evolve the catalog-ingestion workflow from local JSON export into a more durable
 - Preserve existing booking-to-tour foreign keys.
 - Do not create duplicate tours.
 - Keep imported bookings stable during future catalog refreshes.
-
-## Parallel priority
-
-Continue the importer-review/data-governance path:
-
-- preserve imported raw tour labels
-- keep deterministic confirmed mappings
-- make reviewable or unmapped records visible for business review
-- avoid silent unsafe remapping
 
 ## Verification after future changes
 
@@ -44,3 +38,11 @@ After any catalog-ingestion or importer-mapping change, verify:
 - all 10 imported bookings retain correct canonical tours
 - no payment artifacts are reintroduced
 - `db-check` remains healthy
+
+## Existing open questions — retain without assumptions
+
+- Whether `REVIEW_REQUIRED_TOURS` stays passive or becomes stronger review workflow logic.
+- The durable path for applying historical booking updates without delete-and-reimport.
+- When and how a website-sourced catalog refresh should begin, after internal model alignment.
+
+These are existing project questions, not decisions made by the pricing or financial-contract tasks.

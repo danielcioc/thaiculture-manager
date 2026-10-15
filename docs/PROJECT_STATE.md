@@ -1,6 +1,6 @@
 # ThaiCulture Manager — Project State
 
-Last updated: 2026-10-13
+Last updated: 2026-10-15
 
 ## Purpose
 
@@ -13,7 +13,9 @@ ThaiCulture Manager este sistemul intern de operațiuni pentru ThaiCulture Tours
 - React + TypeScript + Vite frontend
 - Docker Compose local orchestration
 
-## Current verified database state
+## Last verified operational database snapshot
+
+The counts below were last verified on 2026-10-13. They were not re-read during the 2026-10-15 financial-contract work; no operational database writes were made.
 
 - bookings_count: 12
 - customers_count: 8
@@ -71,9 +73,21 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
   - imported booking-tour links preserved
 - Commit for catalog ingestion: `b9ab701`.
 
+## Pricing and financial contract release — 2026-10-15
+
+- The versioned `minimum-margin-30-v1` policy uses a 30% minimum margin on net price, excluding VAT, when generating a new quote.
+- Quote generation is restricted to bookings in `Inquiry`, `Offer Prepared`, or `Awaiting Confirmation`. Confirmed, cancelled, post-confirmation, and unknown statuses are refused.
+- Existing pricing formulas and the margin formulas in Booking Detail, Dashboard, and Operations Summary were not changed. No new costs or tariffs were introduced.
+- `POST /payments` now inserts all nine payment columns with their matching values and returns `due_at` and `notes`. It validates positive amounts and DB field limits.
+- `GET /invoices/{invoice_no}` returns `items: []`: the current database schema has invoice headers and amounts but no `invoice_items` table.
+- `backend/app/financials.py` centralizes Paid/Pending aggregation and the confirmed booking financial summary rules; booking list, payment summary, and booking detail use the same rules.
+- The contract commit `d728cfd` (`fix(financials): repair payment and invoice contract aggregation`) is published on `origin/main`. The `main` branch was synchronized after that push; this documentation update is being committed locally and is not pushed yet.
+- Verification: 14 financial/pricing tests passed, including 4 new financial-contract tests: 3 connected to isolated PostgreSQL and 1 unit test for aggregation statuses. The full backend suite reported 23 passed and 1 pre-existing importer fixture failure (the CSV fixture lacks `amount`). `compileall` and `git diff --check` passed. The isolated PostgreSQL test environment was stopped and removed.
+- No business decisions remain open for the financial contract delivered in `d728cfd`. Proformas and mandatory full payment at least 48 hours before a tour remain outside that task.
+
 ## Current technical debt
 
-- Evolve catalog ingestion from local JSON export to website-sourced durable refresh.
+- Keep the importer review mechanism and data-governance path as the next internal priority.
 - Decide whether `REVIEW_REQUIRED_TOURS` should remain passive or become stronger review workflow logic.
-- Clarify the next durable reimport/update path for historical booking updates without delete-and-reimport.
-- Continue broader business-model alignment for booking, financial workflow, and future website integration.
+- Clarify the durable reimport/update path for historical booking updates without delete-and-reimport.
+- Defer website integration until the broader internal booking model is aligned; completion of the financial contract v1 does not settle the other documented workflow questions.

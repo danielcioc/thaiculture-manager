@@ -1,5 +1,26 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-15 financial contract v1 and documentation checkpoint
+
+### What was done
+
+- Published commit `d728cfd` to `origin/main` to stabilize the booking financial contract.
+- Fixed `POST /payments`: all nine inserted columns receive matching values; the response includes `due_at` and `notes`; positive amount and DB field-limit validations are enforced.
+- Fixed `GET /invoices/{invoice_no}` to use the existing header-only invoice schema and return `items: []`, without querying nonexistent `invoice_items`.
+- Added `backend/app/financials.py` as the shared Paid/Pending aggregation and booking financial-summary implementation used by booking list, payment summary, and booking detail.
+- Kept the confirmed financial rules: `requested_amount` is Paid + Pending; a positive partial confirmed payment is `partiallypaid`; covered selling price is `paid`; Pending with no confirmed payment is `depositrequested`; no Paid or Pending payment is `unpaid`.
+- Kept proformas and the mandatory full-payment 48-hour deadline out of scope. No financial business decisions remain open for this task.
+- Did not modify the operational database, dashboard KPI semantics, pricing formulas, or pricing quote flow.
+- Created and removed a separate PostgreSQL test environment; its container, volume, and network were removed after verification.
+
+### Verification
+
+- Financial and pricing tests: 14 passed, including 4 new financial-contract tests (3 connected to isolated PostgreSQL and 1 unit test for aggregation statuses).
+- Full backend suite: 23 passed, 1 failed. The failure is pre-existing and unrelated: `test_importer.py` supplies a CSV fixture without `amount`, which the importer skips.
+- `compileall` and `git diff --check` passed.
+- Commit `d728cfd` is on `origin/main`; `main` was synchronized after the push. This documentation checkpoint is committed locally only and has not been pushed.
+- No application code or operational database was changed during this documentation update.
+
 ## 2026-10-15 minimum-margin quote policy v1
 
 ### What was done

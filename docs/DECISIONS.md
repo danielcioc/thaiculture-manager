@@ -37,3 +37,13 @@ When starting a new session:
 
 ## Current checkpoint decision
 `IMP-20251218-ALEXIS-001` is now the verified paid booking checkpoint and should remain the reference case until the importer is repaired.
+
+## Booking financial contract v1 — confirmed 2026-10-15
+
+- `requested_amount` is the sum of payment rows with status `Paid` and `Pending`; it does not represent a proforma request amount because the current schema has no proforma requested-amount model.
+- A positive confirmed payment below the booking selling price yields `partiallypaid`.
+- Confirmed payments covering the selling price yield `paid`.
+- With no confirmed payment, one or more `Pending` payment rows yield `depositrequested`.
+- With no confirmed or Pending payment, the booking financial status is `unpaid`.
+- Proforma generation and mandatory full payment at least 48 hours before a tour remain outside the delivered task.
+- Dashboard KPI semantics and existing pricing formulas are not changed by this financial-contract decision.
