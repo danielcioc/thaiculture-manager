@@ -15,6 +15,7 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 - Importer resolver unification and the phase-3 importer/schema checks did not access the operational database.
 - The read-only importer-review visibility checkpoint exposes the raw imported tour label, mapping status, review flag, and canonical tour data in booking list/detail. Missing tours display as `Needs review`; no edit or approval action is present. Backend visibility/importer tests (8), frontend build, and lint passed; no frontend test runner is configured. No database was accessed.
 - `backend/app/auth.py` validates externally issued HS256 JWTs, reloads active users and role permissions from PostgreSQL, and exposes `get_current_user` / `require_permission`. Permission JSON is a flat boolean map. Ten auth tests pass with mocked connections. No existing route was protected and no DB was accessed.
+- The importer review audit decision reuses `audit_log`. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` passed isolated PostgreSQL validation only; operational schema remains untouched. Exact actions, event payload, retention/access, and transaction rules are in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`. No runtime audit writer or approval endpoint exists.
 
 ## Files added or changed in this phase
 
@@ -54,7 +55,7 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 
 ## Recommended next task
 
-Before importer-review approval, configure/provision a trusted JWT issuer and signing key, decide which route groups require protection, and decide whether review events reuse `audit_log` or require an additive specialized schema. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
+Before importer-review approval, configure/provision a trusted JWT issuer and signing key, separately authorize operational application of the isolated-validated `audit_log` migration, then implement and test the protected write path. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
 
 Keep the following existing questions open without assumptions: whether manual-review flags become an active review workflow, and how historical booking updates should be reapplied without delete-and-reimport. Defer website integration until the broader internal model is aligned.
 

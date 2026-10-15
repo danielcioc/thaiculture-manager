@@ -1,5 +1,29 @@
 # ThaiCulture Manager — Session Log
 
+# 2026-10-15 isolated audit_log compatibility validation
+
+- Added `database/migrations/20261015_add_audit_log_idempotency_fields.sql`: nullable `request_id uuid`, `request_payload_hash varchar(64)`, actor email/name snapshots and `reason text`, plus partial unique index `(user_id, request_id) WHERE request_id IS NOT NULL`. No defaults, `NOT NULL`, `CHECK`, or backfill.
+- Applied the versioned schema and migration only to a dedicated temporary PostgreSQL 16 container/database/volume on port 55439. Verified exact column types/nullability and the partial unique index.
+- Synthetic SQL checks passed: legacy generic insert without new fields; review insert with all new fields; duplicate actor/request rejected; multiple generic NULL request IDs accepted. A deliberate exception injected after a booking update and audit insert rolled both writes back.
+- Test-only canonical hashing confirmed key-order, UUID-case, and trimmed-reason normalization produce the same SHA-256 for semantically identical payloads; changing the booking or reason changed the hash. A test-only SQL idempotency harness confirmed same-key/same-hash retry leaves exactly one row and same-key/same-actor with a different hash is rejected. These checks do not implement or validate application runtime code or concurrent request handling.
+- The temporary Compose container, volume, and network were removed. No operational database or real data was accessed. No application code or frontend was changed; no commit or push was made.
+- No schema incompatibility was observed. The migration remains unapplied to the operational database; audit helper and approval endpoint remain future work.
+
+## 2026-10-15 importer review audit persistence decision — design only
+
+### Decision and plan
+
+- Reuse the generic `audit_log` declared by the versioned schema rather than introduce a specialized table. Existing columns represent entity/action, actor FK, before/after JSON, and timestamp; no application writes it yet.
+- Planned additive nullable columns: `request_id uuid`, `request_payload_hash varchar(64)`, actor email/name snapshots, and `reason text`; add a partial unique index on `(user_id, request_id)` where request ID is non-NULL.
+- Idempotency is unique per actor/request ID. Same normalized payload returns the original result/event without a second write; a different payload returns 409. The normalized hash includes booking, expected old mapping values, target state/tour, and trimmed reason. A first no-op writes one `import_review.noop` event to consume its key.
+- Defined event actions and exact before/after payload shape in the approval workflow document. Entries are append-only, not automatically purged in v1, and read/write access uses explicit review audit/approval permission keys.
+- Transaction plan locks the booking, compares expected current mapping fields, validates/locks an active canonical tour, and commits the mapping update plus audit insert atomically.
+
+### Scope and verification
+
+- Documentation/design only at that checkpoint. No SQL, endpoint, frontend, mapping behavior, or database change/access occurred in the design task.
+- The server-side auth foundation is committed; the trusted JWT issuer/key provisioning path is still required before a protected write endpoint can be deployed.
+
 ## 2026-10-15 server-side authentication and authorization foundation
 
 ### What was done
@@ -9,7 +33,7 @@
 - Added reusable `get_current_user` and `require_permission` dependencies. Missing/invalid identity and unknown user return 401; inactive user or missing permission return 403. Missing auth configuration returns 503 and never falls back to a development identity.
 - Added optional `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, and `AUTH_JWT_AUDIENCE` settings. The verifier requires a 32-byte minimum secret. No token issuance or route-wide enforcement was added.
 - Established the permission format because no real permission values or seeds exist in repository: flat JSON object with boolean permission keys; only literal `true` grants access.
-- The schema declares a generic `audit_log`, but no application code writes it. Audit persistence design remains a separate follow-up decision.
+- The schema declares a generic `audit_log`, but no application code writes it. The subsequent persistence decision reuses it with additive idempotency and actor snapshot fields.
 
 ### Verification and limits
 

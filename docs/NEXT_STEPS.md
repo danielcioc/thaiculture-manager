@@ -14,6 +14,7 @@ Last updated: 2026-10-15
 - The controlled importer run processed all 10 historical CSV fixtures; rerunning left 10 bookings with no duplicate booking codes. Payments remained at 0 in the isolated fixture because `payments.csv` has no `amount` column. No operational database was accessed.
 - Booking review metadata is now visible read-only in booking list/detail responses and UI. Missing canonical tours display `Needs review`; review fields do not alter booking operational status. Backend tests (8), frontend build, and frontend lint passed.
 - Server-side auth foundation now provides opt-in HS256 bearer validation, active-user lookup, and permission-key dependencies. The permission JSON shape is a flat boolean map. Ten mocked tests pass; no existing routes are protected and there is no token issuer/login flow yet.
+- Importer review audit persistence reuses `audit_log`. The additive migration and its isolated PostgreSQL schema, rollback, and idempotency checks are complete; no operational migration, audit writer, or approval endpoint exists.
 - Payment importer is protected against 0 THB artifacts.
 - Database currently contains 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations.
 - A minimal idempotent catalog-ingestion workflow now exists and was validated successfully.
@@ -24,7 +25,7 @@ Last updated: 2026-10-15
 
 ## Immediate next priority: importer review and data governance
 
-Before implementing importer review approval, establish and configure the trusted JWT issuer/key provisioning path, decide route-level auth coverage and audit-log reuse/schema, then test those pieces in isolation. Preserve raw source values, use the canonical resolver, and keep ambiguous or unmapped records visible for review. Do not make website integration the next task before the broader internal model is aligned.
+Before implementing importer review approval, establish and configure the trusted JWT issuer/key provisioning path and separately authorize/apply the validated additive audit-log migration operationally. Then implement and test the audit writer and protected endpoint. Preserve raw source values, use the canonical resolver, and keep ambiguous or unmapped records visible for review. Do not make website integration the next task before the broader internal model is aligned.
 
 ## Existing catalog-ingestion safeguards
 

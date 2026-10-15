@@ -23,6 +23,14 @@ ThaiCulture Manager este sistemul intern de operațiuni pentru ThaiCulture Tours
 - No login/token issuance, development identity bypass, audit writing, or route-wide protection was added. Existing routes remain as before; future protected endpoints must opt into the dependency.
 - Authentication tests: 10 passed with database access mocked. No database was accessed.
 
+## Importer review audit persistence decision
+
+- The review workflow reuses the generic schema `audit_log`; no specialized audit table is planned. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` adds nullable request/idempotency, actor snapshot, and reason fields plus partial uniqueness. It passed isolated PostgreSQL compatibility and behavior checks; it has not been applied operationally. No runtime audit writer or approval endpoint exists.
+- Idempotency is actor-scoped. Same key and normalized payload returns the original event; same key with a different payload returns 409. A first no-op consumes the key with one no-op event. Audit actions and before/after payload keys are specified in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`.
+- Entries are append-only with no automatic purge in v1. Access uses `bookings.import_review.audit.read`; writes use `bookings.import_review.approve` after authentication is configured.
+- Transaction plan: lock booking, validate expected old mapping fields, lock and verify active canonical tour, then update booking mapping fields and insert audit event in one transaction.
+- The persistence decision is documented in `docs/DECISIONS.md`; migration compatibility was validated in an isolated database only. No operational database was accessed or changed.
+
 ## Last verified operational database snapshot
 
 The counts below were last verified on 2026-10-13. They were not re-read during the 2026-10-15 financial-contract work; no operational database writes were made.
