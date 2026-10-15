@@ -1,5 +1,20 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-15 importer review visibility — read-only
+
+### What was done
+
+- Confirmed booking list/detail APIs already returned `imported_raw_tour_name`, `mapping_status`, and `needs_manual_review`; full detail also returned the canonical `tour_id` and tour name.
+- Added `tour_id` to list and basic booking detail SELECT responses; frontend booking types now model nullable review fields and tour IDs.
+- Booking List and Booking Detail display mapping status as a separate badge, preserve/display the imported raw label, and show a visual review warning. A missing canonical tour is labeled `Needs review`.
+- No review editing, approval workflow, or write endpoint was added. Booking status, mapping data, payments, deduplication, and the operational database were not changed.
+
+### Verification
+
+- Backend booking review visibility and importer mapping tests: 8 passed, using mocked database connections.
+- Frontend production build and `oxlint`: passed. No frontend test runner is configured.
+- No database was accessed.
+
 ## 2026-10-15 importer resolver unification checkpoint
 
 ### What was done

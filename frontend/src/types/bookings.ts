@@ -1,3 +1,5 @@
+export type MappingStatus = 'confirmed' | 'probable_manual_review' | 'unmapped';
+
 export type BookingListItem = {
   id: string;
   booking_code: string;
@@ -6,6 +8,7 @@ export type BookingListItem = {
   customer_name: string | null;
   customer_email: string | null;
   customer_country: string | null;
+  tour_id: string | null;
   tour_code: string | null;
   tour_name: string | null;
   tour_category: string | null;
@@ -26,8 +29,8 @@ export type BookingListItem = {
   selling_price: number;
   currency: string;
   imported_raw_tour_name: string | null;
-  mapping_status: string | null;
-  needs_manual_review: boolean;
+  mapping_status: MappingStatus | null;
+  needs_manual_review: boolean | null;
   created_at: string;
 };
 
@@ -66,6 +69,8 @@ export type BookingDetailResponse = {
     source: string;
     customer_name: string | null;
     customer_country: string | null;
+    tour_id: string | null;
+    tour_code: string | null;
     tour_name: string | null;
     pickup_location_name: string | null;
     dropoff_location_name: string | null;
@@ -74,8 +79,8 @@ export type BookingDetailResponse = {
     total_guests: number;
     guide_language: string | null;
     imported_raw_tour_name: string | null;
-    mapping_status: string | null;
-    needs_manual_review: boolean;
+    mapping_status: MappingStatus | null;
+    needs_manual_review: boolean | null;
   };
   payments: Payment[];
   payment_summary: {

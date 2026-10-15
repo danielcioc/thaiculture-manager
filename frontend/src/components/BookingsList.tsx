@@ -13,6 +13,10 @@ function formatQuoteLabel(value: string | boolean | null | undefined) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatMappingStatus(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 type BookingsListProps = {
   data: BookingsResponse;
   pricingQuotes: PricingQuote[];
@@ -118,16 +122,32 @@ export function BookingsList({
                   <div className="booking-row-top">
                     <div>
                       <div className="booking-code">{booking.booking_code}</div>
-                      <div className="booking-tour">{booking.tour_name || '-'}</div>
+                      <div className={`booking-tour${booking.tour_name ? '' : ' missing-canonical-tour'}`}>
+                        {booking.tour_name || 'Needs review'}
+                      </div>
                     </div>
                     <span className={`status ${getStatusClass(booking.status)}`}>
                       {booking.status}
                     </span>
                   </div>
 
-                  {booking.needs_manual_review && (
-                    <div style={{ marginTop: '8px' }}>
-                      <span className="status needs-review">Needs review</span>
+                  {(booking.imported_raw_tour_name || booking.mapping_status || booking.needs_manual_review) && (
+                    <div className="import-review-metadata">
+                      {booking.imported_raw_tour_name && (
+                        <span className="imported-tour-label">
+                          Imported label: {booking.imported_raw_tour_name}
+                        </span>
+                      )}
+                      <div className="import-review-badges">
+                        {booking.mapping_status && (
+                          <span className={`status mapping-badge mapping-${booking.mapping_status}`}>
+                            Mapping: {formatMappingStatus(booking.mapping_status)}
+                          </span>
+                        )}
+                        {booking.needs_manual_review && (
+                          <span className="status needs-review">Needs review</span>
+                        )}
+                      </div>
                     </div>
                   )}
 

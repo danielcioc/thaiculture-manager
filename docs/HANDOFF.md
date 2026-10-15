@@ -2,7 +2,7 @@
 
 ## Current task status
 
-Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd` and resolver-unification commit `fb62159` are published on `origin/main`. Importer-review schema compatibility is now represented by an uncommitted migration and has only been tested in isolated PostgreSQL.
+Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd` and resolver-unification commit `fb62159` are published on `origin/main`. Importer-review schema compatibility is represented by migration `20261015_add_booking_import_review_metadata.sql` in commit `3738923`; it has only been tested in isolated PostgreSQL. The current local checkpoint adds read-only importer-review visibility and is not yet committed.
 
 ## Last confirmed state
 
@@ -13,6 +13,7 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 - Imported bookings remain linked to the correct canonical tours after catalog ingestion validation.
 - No operational DB write was made during the pricing and financial-contract work.
 - Importer resolver unification and the phase-3 importer/schema checks did not access the operational database.
+- The read-only importer-review visibility checkpoint exposes the raw imported tour label, mapping status, review flag, and canonical tour data in booking list/detail. Missing tours display as `Needs review`; no edit or approval action is present. Backend visibility/importer tests (8), frontend build, and lint passed; no frontend test runner is configured. No database was accessed.
 
 ## Files added or changed in this phase
 

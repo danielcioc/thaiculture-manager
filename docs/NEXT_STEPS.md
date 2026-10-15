@@ -12,6 +12,7 @@ Last updated: 2026-10-15
 - Resolver/importer tests passed (7 relevant tests). The `test_import*.py` suite retains one pre-existing payments fixture failure because its CSV has no `amount`; payment code and test logic were not changed.
 - The versioned importer-review metadata migration was applied twice in an isolated PostgreSQL test only. It has not been applied operationally; defaults, constraints, and backfill remain deferred.
 - The controlled importer run processed all 10 historical CSV fixtures; rerunning left 10 bookings with no duplicate booking codes. Payments remained at 0 in the isolated fixture because `payments.csv` has no `amount` column. No operational database was accessed.
+- Booking review metadata is now visible read-only in booking list/detail responses and UI. Missing canonical tours display `Needs review`; review fields do not alter booking operational status. Backend tests (8), frontend build, and frontend lint passed.
 - Payment importer is protected against 0 THB artifacts.
 - Database currently contains 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations.
 - A minimal idempotent catalog-ingestion workflow now exists and was validated successfully.

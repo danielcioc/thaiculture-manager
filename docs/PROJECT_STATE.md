@@ -67,6 +67,10 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - No `DEFAULT`, `NOT NULL`, `CHECK`, or backfill was added. Those choices remain deferred.
 - Controlled isolated importer run: all 10 repository booking fixtures imported; 7 were `confirmed` and linked, 3 were `probable_manual_review` with `tour_id` NULL; raw labels were retained. Re-running left the booking count at 10 with no duplicate booking codes. Current importer statuses were 8 `Confirmed`, 1 `Pending`, and 1 `Cancelled`. The payments fixture without `amount` inserted 0 payments. This test did not access the operational database.
 - Resolver checkpoint commit `fb62159` is published on `origin/main`.
+- Import-review metadata is exposed read-only by the booking list and detail APIs. The list and basic detail SELECTs now include `tour_id`; full detail already returned `tour_id`, tour name, customer, booking code, and all three review fields.
+- Booking List and Booking Detail show a separate mapping-status badge, imported raw label, and visual review warning. Missing canonical tour names display as `Needs review`; booking operational status is shown independently. No review editing or approval actions were added.
+- Backend booking review visibility tests passed (8 relevant tests); frontend production build and lint passed. No frontend test runner is configured in `frontend/package.json`.
+- This visibility checkpoint did not access or write to any database.
 - Historical tour mappings for `WEB-027` and `WEB-028` are business-confirmed.
 - A minimal durable catalog-ingestion workflow now exists:
   - canonical source file: `backend/data/catalog/tours.json`

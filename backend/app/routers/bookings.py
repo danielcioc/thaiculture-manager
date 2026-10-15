@@ -44,6 +44,7 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                     c.email AS customer_email,
                     c.country AS customer_country,
 
+                    t.id AS tour_id,
                     t.tour_code,
                     t.name AS tour_name,
                     t.category AS tour_category,
@@ -284,6 +285,7 @@ def get_booking(booking_code: str):
                     c.email AS customer_email,
                     c.country AS customer_country,
 
+                    t.id AS tour_id,
                     t.tour_code,
                     t.name AS tour_name,
                     t.category AS tour_category,

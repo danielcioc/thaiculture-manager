@@ -358,6 +358,49 @@ p {
   font-size: 0.96rem;
 }
 
+.import-review-metadata {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.imported-tour-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.import-review-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mapping-badge,
+.needs-review {
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 0.8rem;
+}
+
+.mapping-confirmed {
+  color: #dcfce7;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.mapping-probable_manual_review,
+.mapping-unmapped,
+.needs-review {
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.missing-canonical-tour {
+  color: #fcd34d !important;
+}
+
 .booking-meta-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

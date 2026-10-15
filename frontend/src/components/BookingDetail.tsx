@@ -89,6 +89,7 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
   const [quoteError, setQuoteError] = useState('');
   const [finalPriceGross, setFinalPriceGross] = useState('');
   const { booking, payment_summary, operations_summary, payments, assignments } = data;
+  const canonicalTourLabel = booking.tour_name || 'Needs review';
   const operationsCurrency = operations_summary.currency ?? payment_summary.currency ?? undefined;
   const generateQuote = async () => {
     setGeneratingQuote(true);
@@ -122,7 +123,7 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
             <div>
               <h2 style={{ margin: 0 }}>{booking.booking_code}</h2>
               <p className="section-subtitle">
-                {booking.customer_name || '-'} · {booking.tour_name || '-'}
+                {booking.customer_name || '-'} · {canonicalTourLabel}
               </p>
             </div>
             <span className={`status ${getStatusClass(booking.status)}`}>{booking.status}</span>
@@ -166,14 +167,27 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
                 <div className="detail-list">
                   <div className="detail-row"><span className="label">Booking Code</span><span>{booking.booking_code}</span></div>
                   <div className="detail-row"><span className="label">Customer</span><span>{booking.customer_name || '-'}</span></div>
-                  <div className="detail-row"><span className="label">Tour</span><span>{booking.tour_name || '-'}</span></div>
                   <div className="detail-row">
-                    <span className="label">Imported Tour Name</span>
+                    <span className="label">Tour</span>
+                    <span className={!booking.tour_name ? 'missing-canonical-tour' : undefined}>
+                      {canonicalTourLabel}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Imported tour label</span>
                     <span>{booking.imported_raw_tour_name || '-'}</span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Mapping Status</span>
-                    <span>{booking.mapping_status || '-'}</span>
+                    <span>
+                      {booking.mapping_status ? (
+                        <span className={`status mapping-badge mapping-${booking.mapping_status}`}>
+                          Mapping: {formatTitle(booking.mapping_status)}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Manual Review</span>
@@ -181,7 +195,7 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
                       {booking.needs_manual_review ? (
                         <span className="status needs-review">Needs review</span>
                       ) : (
-                        'No'
+                        booking.needs_manual_review === false ? 'No' : '-'
                       )}
                     </span>
                   </div>
