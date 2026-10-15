@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import type { BookingDetailResponse } from '../types/bookings';
+import type { PricingQuote } from '../types/tours';
+import { generatePricingQuote } from '../services/api';
 import { formatCurrency, formatDate, formatDateTime, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
 
@@ -14,6 +17,8 @@ type BookingDetailProps = {
   data: BookingDetailResponse;
   onBack: () => void;
   loading: boolean;
+  pricingQuote?: PricingQuote;
+  onQuoteGenerated: (quote: PricingQuote) => void;
 };
 
 function formatTitle(value: string | null | undefined) {
@@ -63,9 +68,27 @@ function DetailPair({
   );
 }
 
-export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
+export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGenerated }: BookingDetailProps) {
+  const [generatingQuote, setGeneratingQuote] = useState(false);
+  const [quoteError, setQuoteError] = useState('');
+  const [finalPriceGross, setFinalPriceGross] = useState('');
   const { booking, payment_summary, operations_summary, payments, assignments } = data;
   const operationsCurrency = operations_summary.currency ?? payment_summary.currency ?? undefined;
+  const generateQuote = async () => {
+    setGeneratingQuote(true);
+    setQuoteError('');
+    try {
+      const chosenPrice = finalPriceGross.trim() === '' ? undefined : Number(finalPriceGross);
+      if (chosenPrice !== undefined && (!Number.isFinite(chosenPrice) || chosenPrice < 0)) {
+        throw new Error('Enter a valid non-negative gross price.');
+      }
+      onQuoteGenerated(await generatePricingQuote(booking.booking_code, chosenPrice));
+    } catch (error) {
+      setQuoteError(error instanceof Error ? error.message : 'Unable to generate pricing quote.');
+    } finally {
+      setGeneratingQuote(false);
+    }
+  };
 
   return (
     <>
@@ -154,6 +177,52 @@ export function BookingDetail({ data, onBack, loading }: BookingDetailProps) {
                   <div className="detail-row"><span className="label">Pickup Location</span><span>{booking.pickup_location_name || '-'}</span></div>
                   <div className="detail-row"><span className="label">Drop-off</span><span>{booking.dropoff_location_name || '-'}</span></div>
                 </div>
+              </section>
+
+              <section className="panel">
+                <div className="section-header">
+                  <div>
+                    <h2 style={{ margin: 0 }}>New Pricing Quote</h2>
+                    <p className="section-subtitle">Policy minimum-margin-30-v1 · prices include VAT</p>
+                  </div>
+                  {pricingQuote?.margin_verdict && (
+                    <span className={`status ${getStatusClass(pricingQuote.margin_verdict)}`}>
+                      {formatTitle(pricingQuote.margin_verdict)}
+                    </span>
+                  )}
+                </div>
+                {pricingQuote?.pricing_policy_version === 'minimum-margin-30-v1' ? (
+                  <div className="detail-list">
+                    <div className="detail-row"><span className="label">Minimum price, net</span><span>{pricingQuote.minimum_price_net == null ? 'Unknown' : formatCurrency(pricingQuote.minimum_price_net, operationsCurrency)}</span></div>
+                    <div className="detail-row"><span className="label">Minimum price, gross</span><span>{formatCurrency(pricingQuote.minimum_price_gross ?? pricingQuote.minimum_price, operationsCurrency)}</span></div>
+                    <div className="detail-row"><span className="label">Recommended price, gross</span><span>{formatCurrency(pricingQuote.recommended_price_gross ?? pricingQuote.recommended_price, operationsCurrency)}</span></div>
+                    <div className="detail-row"><span className="label">Approval</span><span>{formatTitle(pricingQuote.approval_status)}</span></div>
+                  </div>
+                ) : (
+                  <p>No quote has been generated under the new policy.</p>
+                )}
+                {booking.status.toLowerCase() !== 'confirmed' && (
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'end', flexWrap: 'wrap', marginTop: '14px' }}>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      Chosen final price, gross (optional)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={finalPriceGross}
+                        onChange={(event) => setFinalPriceGross(event.target.value)}
+                        placeholder="Leave blank to keep final price unset"
+                      />
+                    </label>
+                    <button type="button" className="tab" onClick={generateQuote} disabled={generatingQuote}>
+                      {generatingQuote ? 'Generating…' : 'Generate pricing quote'}
+                    </button>
+                  </div>
+                )}
+                {booking.status.toLowerCase() === 'confirmed' && (
+                  <p>Quote generation is unavailable for confirmed bookings.</p>
+                )}
+                {quoteError && <p role="alert">{quoteError}</p>}
               </section>
 
               <section className="panel">

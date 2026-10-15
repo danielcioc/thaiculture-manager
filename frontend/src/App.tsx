@@ -208,7 +208,18 @@ function App() {
           onSelectBooking={setSelectedCode}
         />
       ) : detail ? (
-        <BookingDetail data={detail} loading={loadingDetail} onBack={() => setSelectedCode(null)} />
+        <BookingDetail
+          data={detail}
+          loading={loadingDetail}
+          pricingQuote={pricingQuotes.find((quote) => quote.booking_id === detail.booking.id)}
+          onQuoteGenerated={(quote) => {
+            setPricingQuotes((current) => [
+              quote,
+              ...current.filter((item) => item.booking_id !== quote.booking_id),
+            ]);
+          }}
+          onBack={() => setSelectedCode(null)}
+        />
       ) : (
         <div className="panel">Loading booking detail...</div>
       );

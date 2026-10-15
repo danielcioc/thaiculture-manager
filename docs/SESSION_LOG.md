@@ -1,5 +1,22 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-15 minimum-margin quote policy v1
+
+### What was done
+
+- Added versioned quote calculation policy `minimum-margin-30-v1` for a 30% minimum net margin excluding VAT.
+- Added an explicit `POST /pricing/quotes/{booking_code}/generate` action. It locks the booking, refuses confirmed bookings, validates the active tour rule VAT rate, and inserts a new quote snapshot in one transaction.
+- Kept new quote legacy price columns gross and stored net equivalents, VAT, verdict, and approval status in `pricing_quotes.breakdown`.
+- Added a quote generation action and latest quote policy status to booking detail/list views. Existing booking, dashboard, and operations margin calculations were not changed.
+- Added unit tests and mocked endpoint integration tests. No database rows or schema were changed during implementation.
+- Added `docs/PRICING_POLICY_MINIMUM_MARGIN_30_V1.md`.
+
+### Verification
+
+- Backend pricing tests: 8 passed.
+- Frontend production build: passed (`tsc -b` and Vite build).
+- No live quote generation or database write was performed.
+
 ## 2026-10-13 continuity and catalog-ingestion checkpoint
 
 ### What was done

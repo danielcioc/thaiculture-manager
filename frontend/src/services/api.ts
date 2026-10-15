@@ -31,6 +31,29 @@ export async function getPricingQuotes(): Promise<PricingQuote[]> {
   return response.json();
 }
 
+export async function generatePricingQuote(
+  bookingCode: string,
+  finalPriceGross?: number,
+): Promise<PricingQuote> {
+  const response = await fetch(
+    `${API_BASE}/pricing/quotes/${encodeURIComponent(bookingCode)}/generate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        finalPriceGross === undefined ? {} : { final_price_gross: finalPriceGross },
+      ),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.detail || `Failed to generate pricing quote (${response.status})`);
+  }
+
+  return payload as PricingQuote;
+}
+
 export async function getPricingRules() {
   return apiGet<PricingRule[]>('/pricing/rules');
 }

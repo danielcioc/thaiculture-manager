@@ -145,6 +145,14 @@ export function BookingsList({
                       <span className={`status ${getStatusClass(pricingQuote.direct_cost_is_known ? 'Paid' : 'Pending')}`}>
                         Direct cost known: {formatQuoteLabel(pricingQuote.direct_cost_is_known)}
                       </span>
+                      {pricingQuote.margin_verdict && (
+                        <span className={`status ${getStatusClass(pricingQuote.margin_verdict)}`}>
+                          Margin: {formatQuoteLabel(pricingQuote.margin_verdict)}
+                        </span>
+                      )}
+                      {pricingQuote.approval_status === 'manual_override_required' && (
+                        <span className="status needs-review">Manual approval required</span>
+                      )}
                     </div>
                   )}
 

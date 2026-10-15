@@ -5,10 +5,12 @@ export function getStatusClass(value: string | null | undefined) {
   if (['confirmed', 'paid', 'active', 'completed', 'depositpaid'].includes(normalized)) {
     return 'status-positive';
   }
+  if (['meets_margin'].includes(normalized)) return 'status-positive';
   if (['pending', 'partially paid', 'partiallypaid', 'depositrequested', 'in progress'].includes(normalized)) {
     return 'status-warning';
   }
-  if (['cancelled', 'canceled', 'inactive', 'failed', 'unpaid'].includes(normalized)) {
+  if (['direct_cost_unknown'].includes(normalized)) return 'status-warning';
+  if (['cancelled', 'canceled', 'inactive', 'failed', 'unpaid', 'below_margin', 'manual_override_required'].includes(normalized)) {
     return 'status-negative';
   }
 

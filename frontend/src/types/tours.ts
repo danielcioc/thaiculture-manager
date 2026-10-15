@@ -54,6 +54,14 @@ export type PricingQuote = {
   cost_status: string | null;
   direct_cost_is_known: boolean | null;
   historical_price_preserved: boolean | null;
+  pricing_policy_version?: string | null;
+  minimum_price_net?: number | null;
+  minimum_price_gross?: number | null;
+  recommended_price_net?: number | null;
+  recommended_price_gross?: number | null;
+  final_price_net?: number | null;
+  margin_verdict?: 'meets_margin' | 'below_margin' | 'direct_cost_unknown' | null;
+  approval_status?: 'manual_override_required' | 'not_required' | null;
   valid_until: string | null;
   breakdown: Record<string, unknown>;
 };
