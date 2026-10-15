@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: thaiculture_manager
       POSTGRES_USER: tct_admin
-      POSTGRES_PASSWORD: tct_local_password
+      POSTGRES_PASSWORD: ${THAICULTURE_DB_PASSWORD:?Set THAICULTURE_DB_PASSWORD in project .env}
     ports:
       - "5433:5432"
     volumes:
@@ -19,7 +19,7 @@ services:
     container_name: tct_backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://tct_admin:tct_local_password@postgres:5432/thaiculture_manager
+      DATABASE_URL: postgresql://tct_admin:${THAICULTURE_DB_PASSWORD:?Set THAICULTURE_DB_PASSWORD in project .env}@postgres:5432/thaiculture_manager
     ports:
       - "8000:8000"
     depends_on:

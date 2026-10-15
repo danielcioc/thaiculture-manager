@@ -19,3 +19,6 @@ backend/data/imports/
 *.bak*
 *.local_backup
 backups/
+
+# Local Compose credentials
+.env
