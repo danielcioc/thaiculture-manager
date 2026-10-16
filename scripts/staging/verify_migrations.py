@@ -9,6 +9,7 @@ from common import ROOT, compose_command, run_preflight, staging_runtime_problem
 MIGRATIONS = (
     ROOT / "database/migrations/20261015_add_booking_import_review_metadata.sql",
     ROOT / "database/migrations/20261015_add_audit_log_idempotency_fields.sql",
+    ROOT / "database/migrations/20261016_add_booking_deposit_amount.sql",
 )
 
 parser = argparse.ArgumentParser(description="Verify staging review/audit schema; optional backed-up additive migration apply")
@@ -32,7 +33,7 @@ if args.apply_missing:
         raise SystemExit(2)
     with args.backup.open("rb") as backup:
         verified = subprocess.run(
-            compose_command("exec", "-T", "postgres", "pg_restore", "--list", "-"),
+            compose_command("exec", "-T", "postgres", "pg_restore", "--list"),
             cwd=ROOT, stdin=backup, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL, env=__import__("common")._clean_compose_env(),
         )
@@ -55,6 +56,7 @@ SELECT table_name || '.' || column_name || '|' || data_type || '|' || is_nullabl
 FROM information_schema.columns
 WHERE table_schema='public' AND (
   (table_name='bookings' AND column_name IN ('imported_raw_tour_name','mapping_status','needs_manual_review')) OR
+  (table_name='bookings' AND column_name='deposit_amount') OR
   (table_name='audit_log' AND column_name IN ('request_id','request_payload_hash','actor_email_snapshot','actor_name_snapshot','reason'))
 )
 ORDER BY table_name, ordinal_position;
@@ -75,6 +77,7 @@ expected = {
     "bookings.imported_raw_tour_name|text|YES",
     "bookings.mapping_status|character varying|YES",
     "bookings.needs_manual_review|boolean|YES",
+    "bookings.deposit_amount|numeric|YES",
     "audit_log.request_id|uuid|YES",
     "audit_log.request_payload_hash|character varying|YES",
     "audit_log.actor_email_snapshot|text|YES",

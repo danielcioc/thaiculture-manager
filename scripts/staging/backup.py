@@ -41,7 +41,7 @@ if result.returncode or not destination.is_file() or destination.stat().st_size 
 
 with destination.open("rb") as backup:
     verify = subprocess.run(
-        compose_command("exec", "-T", "postgres", "pg_restore", "--list", "-"),
+        compose_command("exec", "-T", "postgres", "pg_restore", "--list"),
         cwd=ROOT,
         stdin=backup,
         stdout=subprocess.DEVNULL,
@@ -49,6 +49,7 @@ with destination.open("rb") as backup:
         env=__import__("common")._clean_compose_env(),
     )
 if verify.returncode:
+    destination.unlink(missing_ok=True)
     print("BLOCKED: backup was created but pg_restore could not read it")
     raise SystemExit(4)
 print("PASS: staging custom-format backup created and readable")
