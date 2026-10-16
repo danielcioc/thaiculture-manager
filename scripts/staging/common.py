@@ -23,8 +23,8 @@ REQUIRED_KEYS = (
     "AUTH_JWT_AUDIENCE",
 )
 EXPECTED_CONTAINERS = (
-    "thaiculture-staging-approval-postgres",
-    "thaiculture-staging-approval-backend",
+    "thaiculture-staging-approval-postgres-1",
+    "thaiculture-staging-approval-backend-1",
 )
 EXPECTED_VOLUMES = ("thaiculture-staging-approval-postgres-data",)
 EXPECTED_NETWORKS = ("thaiculture-staging-approval-network",)

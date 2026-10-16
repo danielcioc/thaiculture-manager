@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16
-    container_name: thaiculture-staging-approval-postgres
     restart: unless-stopped
     labels: &staging_labels
       com.thaiculture.project: thaiculture-staging-approval
@@ -28,7 +27,6 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: thaiculture-staging-approval-backend
     restart: unless-stopped
     labels: *staging_labels
     environment:

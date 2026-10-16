@@ -7,10 +7,12 @@ from unittest.mock import patch
 
 from common import (
     EXPECTED_CONTAINERS,
+    COMPOSE_FILE,
     EXPECTED_NETWORKS,
     EXPECTED_VOLUMES,
     PROJECT,
     REQUIRED_KEYS,
+    _resources_from_config,
     run_preflight,
 )
 
@@ -63,12 +65,24 @@ class StagingPreflightTests(unittest.TestCase):
     def test_expected_staging_resource_names_are_explicit(self):
         self.assertEqual(PROJECT, "thaiculture-staging-approval")
         self.assertEqual(EXPECTED_CONTAINERS, (
-            "thaiculture-staging-approval-postgres",
-            "thaiculture-staging-approval-backend",
+            "thaiculture-staging-approval-postgres-1",
+            "thaiculture-staging-approval-backend-1",
         ))
         self.assertEqual(EXPECTED_VOLUMES, ("thaiculture-staging-approval-postgres-data",))
         self.assertEqual(EXPECTED_NETWORKS, ("thaiculture-staging-approval-network",))
         self.assertIn("DATABASE_URL", REQUIRED_KEYS)
+
+    def test_staging_compose_uses_project_scoped_container_names(self):
+        compose_text = COMPOSE_FILE.read_text(encoding="utf-8")
+        self.assertNotIn("container_name:", compose_text)
+        config = {
+            "name": PROJECT,
+            "services": {"postgres": {}, "backend": {}},
+            "volumes": {},
+            "networks": {},
+        }
+        resources = _resources_from_config(json.dumps(config))
+        self.assertEqual(resources["containers"], list(EXPECTED_CONTAINERS))
 
     def test_valid_staging_target_resolves_only_to_isolated_resources(self):
         self.write_settings(
@@ -81,7 +95,6 @@ class StagingPreflightTests(unittest.TestCase):
             "name": PROJECT,
             "services": {
                 "postgres": {
-                    "container_name": EXPECTED_CONTAINERS[0],
                     "labels": {
                         "com.thaiculture.project": PROJECT,
                         "com.thaiculture.environment": "staging",
@@ -90,7 +103,6 @@ class StagingPreflightTests(unittest.TestCase):
                     "ports": [{"target": 5432, "published": "55441", "host_ip": "127.0.0.1"}],
                 },
                 "backend": {
-                    "container_name": EXPECTED_CONTAINERS[1],
                     "labels": {
                         "com.thaiculture.project": PROJECT,
                         "com.thaiculture.environment": "staging",
