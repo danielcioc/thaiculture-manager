@@ -41,3 +41,5 @@ Rotate database credentials at PostgreSQL and update the Compose/backend provisi
 ## Current provision-before-use checklist
 
 Before enabling protected approval routes in a deployment, an operator must provision `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, and `DATABASE_URL` in the appropriate environment. The trusted issuer and audience must be confirmed with the identity provider. Resolve the Compose-only `THAICULTURE_DB_PASSWORD` versus backend `DATABASE_URL` boundary before relying on a shared dotenv file for both systems.
+
+For the complete operator-owned backup, migration inspection/application, permission, smoke-test, and rollback procedure for importer review approval, see [IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md](IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md). The procedure does not print secret values and does not run automatically.

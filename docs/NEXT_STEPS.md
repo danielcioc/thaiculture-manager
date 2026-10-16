@@ -28,6 +28,8 @@ Last updated: 2026-10-16
 
 Before using importer review approval operationally, separately authorize and apply the validated additive audit-log migration, provision the trusted `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, and `AUTH_JWT_AUDIENCE`, and verify `DATABASE_URL` in the target deployment. The endpoint has no frontend approval action yet. Review placeholder-like local DB URL fallbacks in import scripts as a separate configuration task; do not rely on them for operational access. Preserve raw source values, use the canonical resolver, and keep ambiguous or unmapped records visible for review. Defer website integration until the broader internal model is aligned.
 
+Use `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md` for the complete release procedure. Before enabling the route, verify both importer-review metadata and audit idempotency migrations in the target schema, confirm the reviewer permission, make and validate a backup, and complete isolated/staging smoke checks. This repository does not track applied migration versions; do not infer DB state from migration filenames. No operational action has been performed by the readiness review.
+
 ## Existing catalog-ingestion safeguards
 
 - Keep `backend/data/catalog/tours.json` as a controlled canonical input until website-sourced refresh is implemented.

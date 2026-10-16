@@ -202,3 +202,19 @@
 - drivers_count: 0
 - assignments_count: 0
 - local and remote `main` include the payment-import and catalog-ingestion milestones
+
+## 2026-10-16 importer review approval release readiness
+
+### What was checked
+
+- Confirmed `app.main` imports and registers `bookings.router`; the bookings router does not import the app module, so the observed import direction is not circular.
+- Documented the current approval endpoint contract: request/auth requirements, success response fields, and HTTP error codes. The route currently returns a dict without an explicit FastAPI `response_model`.
+- Confirmed approval tests cover authorized confirmation, review state with null `tour_id`, stale state, identical retry, changed-payload conflict, audit rollback, and auth/permission rejection.
+- Confirmed migration files are discoverable by filename but there is no migration runner or applied migration ledger. Deployment must inspect schema state directly under operator authorization.
+- Added a secret-safe operator release checklist covering environment provisioning, backup, both additive migrations, reviewer permission, staging smoke tests, rollback, and manual secret rotation.
+
+### Scope and outcome
+
+- No backend/frontend logic, migration SQL, or live data changed.
+- No operational database was accessed, no migration was applied, and Compose was not started.
+- Operator-owned deployment steps remain pending; see `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md`.
