@@ -28,6 +28,8 @@ Last updated: 2026-10-16
 
 The read-only importer review visibility milestone now has a dedicated Review Queue UI with an explicit approval form wired to `POST /bookings/{booking_code}/import-review/decision`. Approval requires a bearer token, active canonical tour, reason, and explicit confirmation; the token is kept in component memory only. A 409 requires reloading before another decision; transport failures retain the request ID so the same request can be retried idempotently.
 
+The queue also supports mapping-status, manual-review-flag, and booking-status filters, local sorting by creation date/tour date/booking code, ten-row pagination, and a pending-review count. Stale mapping changes and request-ID payload conflicts have distinct feedback. Seven frontend tests pass, with build and lint passing.
+
 Local staging tooling is isolated under `docker-compose.staging.yml` and `scripts/staging/`. The Compose project, containers, network, volume, and localhost ports have dedicated names. Preflight rejects missing settings and any database URL that does not point to the fixed isolated PostgreSQL service/database. Staging validation is pending operator provisioning of `.env.staging` only; the file must remain untracked and secret values must never be printed. Use preflight first, then the documented backup, migration verifier, tests/smoke runner, and cleanup scripts. Do not connect to the operational database.
 
 The approval endpoint is not ready for operational use until the additive audit migration and trusted JWT configuration are provisioned and verified in the intended environment. The endpoint has no login/token issuance flow in the application.

@@ -7,6 +7,12 @@ import type {
   ImportReviewDecisionRequest,
 } from '../types/bookings';
 import type { TourListItem, ToursResponse } from '../types/tours';
+import {
+  classifyReviewConflict,
+  countPendingReviews,
+  getReviewQueuePage,
+  type ReviewQueueFilters,
+} from '../utils/reviewQueue';
 
 function formatMappingStatus(value: string | null) {
   return value ? value.replace(/_/g, ' ') : 'Not set';
@@ -26,22 +32,25 @@ export function ImportReviewQueue() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [requiresReload, setRequiresReload] = useState(false);
+  const [mappingFilter, setMappingFilter] = useState<ReviewQueueFilters['mappingStatus']>('all');
+  const [reviewFlagFilter, setReviewFlagFilter] = useState<ReviewQueueFilters['needsManualReview']>('true');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<ReviewQueueFilters['sortBy']>('created_desc');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const [bookingData, tourData] = await Promise.all([
-        apiGet<BookingsResponse>('/bookings?needs_manual_review=true'),
+        apiGet<BookingsResponse>('/bookings'),
         apiGet<ToursResponse>('/tours'),
       ]);
-      const reviewItems = bookingData.items.filter(
-        (booking) => booking.needs_manual_review === true,
-      );
-      setBookings(reviewItems);
+      setBookings(bookingData.items);
       setTours(tourData.items.filter((tour) => tour.is_active));
       setRequiresReload(false);
-      if (selectedCode && !reviewItems.some((item) => item.booking_code === selectedCode)) {
+      if (selectedCode && !bookingData.items.some((item) => item.booking_code === selectedCode)) {
         setSelectedCode('');
         setSelectedTourId('');
         setReason('');
@@ -61,7 +70,21 @@ export function ImportReviewQueue() {
   }, [reload]);
 
   const selectedBooking = bookings.find((booking) => booking.booking_code === selectedCode);
+  const queuePage = getReviewQueuePage(bookings, {
+    mappingStatus: mappingFilter,
+    needsManualReview: reviewFlagFilter,
+    bookingStatus: bookingStatusFilter,
+    sortBy,
+    page,
+    pageSize,
+  });
+  const pendingReviewCount = countPendingReviews(bookings);
+  const bookingStatuses = [...new Set(bookings.map((booking) => booking.status))].sort();
   const invalidateRetryKey = () => setRequestId('');
+  const updateFilter = (update: () => void) => {
+    update();
+    setPage(1);
+  };
 
   const submitApproval = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,7 +127,13 @@ export function ImportReviewQueue() {
       } else if (submitError instanceof ApiError && submitError.status === 409) {
         setRequestId('');
         setRequiresReload(true);
-        setError(`${submitError.message} Reload the queue and verify the current mapping before deciding again.`);
+        const conflict = classifyReviewConflict(submitError.message);
+        const explanation = conflict === 'stale'
+          ? 'This booking changed after the queue loaded.'
+          : conflict === 'request_id_reuse'
+            ? 'This request ID was already used for a different decision payload.'
+            : 'The server rejected this decision because the review state conflicts.';
+        setError(`${explanation} Reload the queue and verify the current mapping before deciding again.`);
       } else {
         setError(submitError instanceof Error ? submitError.message : 'Approval failed. You can retry unchanged input safely.');
       }
@@ -148,10 +177,50 @@ export function ImportReviewQueue() {
       </label>
 
       {loading ? <p>Loading review queue…</p> : null}
-      {!loading && bookings.length === 0 ? <p>No bookings currently need mapping review.</p> : null}
+      <div className="review-queue-summary">
+        <span className="status needs-review">{pendingReviewCount} pending review</span>
+        <span>{queuePage.total} matching bookings</span>
+      </div>
+
+      <div className="review-queue-filters" aria-label="Review queue filters">
+        <label>
+          Mapping status
+          <select value={mappingFilter} onChange={(event) => updateFilter(() => setMappingFilter(event.target.value as ReviewQueueFilters['mappingStatus']))}>
+            <option value="all">All mappings</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="probable_manual_review">Probable manual review</option>
+            <option value="unmapped">Unmapped</option>
+          </select>
+        </label>
+        <label>
+          Manual review
+          <select value={reviewFlagFilter} onChange={(event) => updateFilter(() => setReviewFlagFilter(event.target.value as ReviewQueueFilters['needsManualReview']))}>
+            <option value="true">Needs review</option>
+            <option value="false">No review needed</option>
+            <option value="all">All flags</option>
+          </select>
+        </label>
+        <label>
+          Booking status
+          <select value={bookingStatusFilter} onChange={(event) => updateFilter(() => setBookingStatusFilter(event.target.value))}>
+            <option value="all">All statuses</option>
+            {bookingStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>
+        <label>
+          Sort by
+          <select value={sortBy} onChange={(event) => updateFilter(() => setSortBy(event.target.value as ReviewQueueFilters['sortBy']))}>
+            <option value="created_desc">Recently created</option>
+            <option value="tour_date_asc">Tour date</option>
+            <option value="booking_code_asc">Booking code</option>
+          </select>
+        </label>
+      </div>
+
+      {!loading && queuePage.total === 0 ? <p>No bookings match these review filters.</p> : null}
 
       <div className="review-queue-list">
-        {bookings.map((booking) => (
+        {queuePage.items.map((booking) => (
           <article className="review-queue-item" key={booking.id}>
             <button
               type="button"
@@ -226,6 +295,15 @@ export function ImportReviewQueue() {
             )}
           </article>
         ))}
+      </div>
+      <div className="review-pagination" aria-label="Review queue pages">
+        <button type="button" className="tab" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={queuePage.page <= 1}>
+          Previous
+        </button>
+        <span>Page {queuePage.page} of {queuePage.pageCount}</span>
+        <button type="button" className="tab" onClick={() => setPage((current) => Math.min(queuePage.pageCount, current + 1))} disabled={queuePage.page >= queuePage.pageCount}>
+          Next
+        </button>
       </div>
       {error && <p role="alert" className="review-feedback review-feedback-error">{error}</p>}
       {success && <p role="status" className="review-feedback review-feedback-success">{success}</p>}

@@ -2,7 +2,7 @@
 
 ## Current task status
 
-Importer-review approval UI and isolated staging tooling are implemented locally. Staging remains blocked only on operator provisioning of `.env.staging`; do not start Compose until the secret-safe preflight returns READY.
+Importer-review approval UI now includes client-side mapping/review/booking-status filters, local sorting and pagination, a pending-review count, and distinct stale/request-id conflict feedback. Frontend tests, build, and lint pass. Isolated staging tooling is published; staging validation remains pending `.env.staging` provisioning. Do not start Compose until the secret-safe preflight returns READY.
 
 Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd`, resolver-unification commit `fb62159`, importer metadata migration commit `3738923`, read-only visibility commit `6bf68a2`, approval design commit `fab5417`, auth foundation commit `e2a39bb`, and audit migration commit `c0ecf45` are published on `origin/main`.
 

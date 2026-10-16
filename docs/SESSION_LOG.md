@@ -238,3 +238,11 @@
 - Backend auth (10) and booking visibility (1) tests passed. Audit payload unit tests passed (2); five PostgreSQL audit tests and all 14 PostgreSQL approval tests were skipped because no isolated test database was configured. The four staging preflight tests passed. A backend test attempt without a test-only `DATABASE_URL` first failed during settings import; a synthetic unreachable test-only settings URL was then used to run non-database tests. No database connection was attempted.
 - Secret-safe staging preflight reports BLOCKED because all five required keys are absent from the empty `.env.staging`; it returned before invoking Docker. Compose was not started; no database was accessed.
 - No booking status, raw label, financial logic, payment behavior, mapping resolver, or operational database data was changed.
+
+## 2026-10-16 Review Queue refinements
+
+- Added client-side filters for mapping status, `needs_manual_review`, and booking status, using only statuses returned by the existing bookings API.
+- Added local sorting by created date, tour date, or booking code; ten-row pagination; and a pending-review count that remains independent of current filters.
+- Distinguished stale booking-mapping conflicts from reused request-ID payload conflicts. A 409 disables another submission until the queue is reloaded; transport failures retain the original request ID for safe retry.
+- Added frontend tests for filters/counts, sorting/pagination without duplicates, conflict classification, and the approval API's success/403/409 paths. All 7 frontend tests passed; production build and lint passed.
+- No backend/API/schema, booking status, mapping data, payment, financial, or operational database changes were made. Staging validation remains pending operator provisioning of `.env.staging`.
