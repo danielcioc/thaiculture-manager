@@ -20,8 +20,8 @@ def dashboard_summary():
 
             cur.execute("""
                 SELECT
-                    COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) AS paid_revenue,
-                    COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) AS pending_revenue
+                    COALESCE(SUM(CASE WHEN LOWER(BTRIM(status)) = 'paid' THEN amount ELSE 0 END), 0) AS paid_revenue,
+                    COALESCE(SUM(CASE WHEN LOWER(BTRIM(status)) = 'pending' THEN amount ELSE 0 END), 0) AS pending_revenue
                 FROM payments;
             """)
             payment_stats = cur.fetchone()
@@ -185,9 +185,9 @@ def unpaid_bookings():
                     b.tour_date,
                     b.selling_price,
                     b.currency,
-                    COALESCE(SUM(CASE WHEN p.status = 'Paid' THEN p.amount ELSE 0 END), 0) AS paid_amount,
-                    COALESCE(SUM(CASE WHEN p.status = 'Pending' THEN p.amount ELSE 0 END), 0) AS pending_amount,
-                    (b.selling_price - COALESCE(SUM(CASE WHEN p.status = 'Paid' THEN p.amount ELSE 0 END), 0)) AS outstanding_amount
+                    COALESCE(SUM(CASE WHEN LOWER(BTRIM(p.status)) = 'paid' THEN p.amount ELSE 0 END), 0) AS paid_amount,
+                    COALESCE(SUM(CASE WHEN LOWER(BTRIM(p.status)) = 'pending' THEN p.amount ELSE 0 END), 0) AS pending_amount,
+                    (b.selling_price - COALESCE(SUM(CASE WHEN LOWER(BTRIM(p.status)) = 'paid' THEN p.amount ELSE 0 END), 0)) AS outstanding_amount
                 FROM bookings b
                 LEFT JOIN customers c ON c.id = b.customer_id
                 LEFT JOIN tours t ON t.id = b.tour_id
@@ -201,7 +201,7 @@ def unpaid_bookings():
                     b.tour_date,
                     b.selling_price,
                     b.currency
-                HAVING (b.selling_price - COALESCE(SUM(CASE WHEN p.status = 'Paid' THEN p.amount ELSE 0 END), 0)) > 0
+                HAVING (b.selling_price - COALESCE(SUM(CASE WHEN LOWER(BTRIM(p.status)) = 'paid' THEN p.amount ELSE 0 END), 0)) > 0
                 ORDER BY b.tour_date ASC NULLS LAST, b.created_at DESC
                 LIMIT 20;
             """)

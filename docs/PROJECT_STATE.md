@@ -120,3 +120,12 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - Decide whether the existing manual-review flags should remain passive or become a stronger review workflow.
 - Clarify the durable reimport/update path for historical booking updates without delete-and-reimport.
 - Defer website integration until the broader internal booking model is aligned; completion of the financial contract v1 does not settle the other documented workflow questions.
+
+## Booking financial workflow V1.1 — 2026-10-16
+
+- `bookings.selling_price` remains the canonical total amount. Migration `20261016_add_booking_deposit_amount.sql` adds nullable `bookings.deposit_amount`; historical values are not backfilled and NULL means unknown/not configured.
+- Payment writes accept `draft`, `requested`, `pending`, `paid`, `partiallypaid`, `overdue`, and `cancelled`; legacy partially-paid spellings normalize on read/write.
+- Financial totals count only positive payments in the booking currency. `paid` and `partiallypaid` count as received; `requested`, `pending`, and `overdue` count as open requests. Cancelled/draft rows are excluded.
+- `balance_due = max(total_amount - paid_amount, 0)`. Derived booking financial statuses are `unpaid`, `depositrequested`, `depositpaid`, `partiallypaid`, `paid`, and `overdue`, in that precedence order as documented in the financial workflow.
+- Booking Detail has a separate financial summary and payment details. Operational booking status and operations margin formulas remain independent. No invoice generation was added.
+- Staging validation remains pending provisioning and was not required or accessed for this implementation.

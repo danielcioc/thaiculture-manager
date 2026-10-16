@@ -4,6 +4,7 @@ import type { PricingQuote } from '../types/tours';
 import { generatePricingQuote } from '../services/api';
 import { formatCurrency, formatDate, formatDateTime, formatTime } from '../utils/formatters';
 import { getStatusClass } from '../utils/status';
+import { getBookingFinancialSummaryView } from '../utils/bookingFinancialSummary';
 
 const ELIGIBLE_QUOTE_BOOKING_STATUSES = new Set([
   'inquiry',
@@ -27,12 +28,14 @@ const bookingFinancialStatusLabel: Record<string, string> = {
   depositpaid: 'Deposit Paid',
   partiallypaid: 'Partially Paid',
   paid: 'Paid',
+  overdue: 'Overdue',
 };
 
 type BookingDetailProps = {
   data: BookingDetailResponse;
   onBack: () => void;
   loading: boolean;
+  error?: string;
   pricingQuote?: PricingQuote;
   onQuoteGenerated: (quote: PricingQuote) => void;
 };
@@ -84,13 +87,14 @@ function DetailPair({
   );
 }
 
-export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGenerated }: BookingDetailProps) {
+export function BookingDetail({ data, onBack, loading, error = '', pricingQuote, onQuoteGenerated }: BookingDetailProps) {
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState('');
   const [finalPriceGross, setFinalPriceGross] = useState('');
   const { booking, payment_summary, operations_summary, payments, assignments } = data;
   const canonicalTourLabel = booking.tour_name || 'Needs review';
   const operationsCurrency = operations_summary.currency ?? payment_summary.currency ?? undefined;
+  const financialView = getBookingFinancialSummaryView(payment_summary);
   const generateQuote = async () => {
     setGeneratingQuote(true);
     setQuoteError('');
@@ -117,6 +121,8 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
 
       {loading ? (
         <div className="panel">Loading booking detail...</div>
+      ) : error ? (
+        <section className="panel" role="alert">Unable to load booking financial details: {error}</section>
       ) : (
         <>
           <div className="section-header" style={{ marginBottom: '18px' }}>
@@ -131,33 +137,30 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
 
           <div className="grid">
             <div className="card">
-              <span>Total Revenue</span>
-              <strong>
-                {formatCurrency(payment_summary.selling_price, payment_summary.currency)}
-              </strong>
-            </div>
-
-            <div className="card">
-              <span>Paid Revenue</span>
-              <strong>
-                {formatCurrency(payment_summary.paid_amount, payment_summary.currency)}
-              </strong>
-            </div>
-
-            <div className="card">
-              <span>Pending Revenue</span>
-              <strong>
-                {formatCurrency(payment_summary.pending_amount, payment_summary.currency)}
-              </strong>
-            </div>
-
-            <div className="card">
               <span>Gross Margin</span>
               <strong>
                 {formatCurrency(operations_summary.gross_margin, operationsCurrency)}
               </strong>
             </div>
           </div>
+
+          <section className="panel" aria-label="Booking financial summary" style={{ marginTop: '16px' }}>
+            <div className="section-header">
+              <div>
+                <h2 style={{ margin: 0 }}>Booking Financial Summary</h2>
+                <p className="section-subtitle">Payment-derived amounts, separate from operational booking status</p>
+              </div>
+              <span className={`status ${getStatusClass(payment_summary.booking_financial_status)}`}>
+                {formatTitle(financialView.status)}
+              </span>
+            </div>
+            <div className="grid">
+              <div className="card"><span>Total</span><strong>{formatCurrency(financialView.total, payment_summary.currency)}</strong></div>
+              <div className="card"><span>Deposit</span><strong>{financialView.deposit == null ? 'Not configured' : formatCurrency(financialView.deposit, payment_summary.currency)}</strong></div>
+              <div className="card"><span>Paid</span><strong>{formatCurrency(financialView.paid, payment_summary.currency)}</strong></div>
+              <div className="card"><span>Balance due</span><strong>{formatCurrency(financialView.balance, payment_summary.currency)}</strong></div>
+            </div>
+          </section>
 
           <div className="details-grid">
             <div className="stack">
@@ -284,6 +287,8 @@ export function BookingDetail({ data, onBack, loading, pricingQuote, onQuoteGene
                         <DetailPair label="Method" value={payment.method} />
                         <DetailPair label="Reference" value={payment.reference} />
                         <DetailPair label="Paid At" value={formatDateTime(payment.paid_at)} />
+                        <DetailPair label="Due At" value={formatDateTime(payment.due_at)} />
+                        <DetailPair label="Notes" value={payment.notes} />
                       </div>
                     ))}
                   </div>

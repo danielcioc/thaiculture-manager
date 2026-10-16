@@ -54,6 +54,7 @@ function App() {
 
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
+  const [detailError, setDetailError] = useState('');
 
   const [selectedInvoiceNo, setSelectedInvoiceNo] = useState<string | null>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetailResponse | null>(null);
@@ -143,9 +144,10 @@ function App() {
     }
 
     setLoadingDetail(true);
+    setDetailError('');
     apiGet<BookingDetailResponse>(`/bookings/${selectedCode}/full`)
       .then(setDetail)
-      .catch((e) => setError(e.message))
+      .catch((e) => setDetailError(e.message))
       .finally(() => setLoadingDetail(false));
   }, [selectedCode]);
 
@@ -215,6 +217,7 @@ function App() {
         <BookingDetail
           data={detail}
           loading={loadingDetail}
+          error={detailError}
           pricingQuote={pricingQuotes.find((quote) => quote.booking_id === detail.booking.id)}
           onQuoteGenerated={(quote) => {
             setPricingQuotes((current) => [
@@ -225,7 +228,9 @@ function App() {
           onBack={() => setSelectedCode(null)}
         />
       ) : (
-        <div className="panel">Loading booking detail...</div>
+        <div className="panel" role={detailError ? 'alert' : undefined}>
+          {detailError || 'Loading booking detail...'}
+        </div>
       );
     }
 

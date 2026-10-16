@@ -62,3 +62,9 @@ After any catalog-ingestion or importer-mapping change, verify:
 - When and how a website-sourced catalog refresh should begin, after internal model alignment.
 
 These are existing project questions, not decisions made by the pricing or financial-contract tasks.
+
+## Booking Financial Workflow V1.1 — 2026-10-16
+
+- V1.1 aligns payment statuses and booking financial derivation and displays total, optional deposit, paid, balance, and financial status in Booking Detail.
+- Apply the additive nullable deposit migration through the normal release process. Do not backfill historical deposits without reviewed source data.
+- Staging validation remains a separate operator-provisioning task and does not block development.

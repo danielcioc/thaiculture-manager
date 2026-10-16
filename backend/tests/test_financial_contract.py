@@ -1,17 +1,19 @@
 import os
 import unittest
+from datetime import datetime, timezone
 from decimal import Decimal
 from urllib.parse import urlparse
 from uuid import uuid4
 from unittest.mock import patch
 
-from app.financials import booking_financial_summary
+from app.financials import aggregate_payment_records, booking_financial_summary, normalize_payment_status
 
 
 class BookingFinancialSummaryTests(unittest.TestCase):
     def test_confirmed_payment_aggregation_and_statuses(self):
         cases = [
             ("10500", "10500", "0", "paid", "10500"),
+            ("10500", "12000", "0", "paid", "12000"),
             ("10500", "1200", "0", "partiallypaid", "1200"),
             ("10500", "0", "1200", "depositrequested", "1200"),
             ("10500", "0", "0", "unpaid", "0"),
@@ -19,10 +21,97 @@ class BookingFinancialSummaryTests(unittest.TestCase):
         for selling, paid, pending, expected_status, expected_requested in cases:
             with self.subTest(expected_status=expected_status):
                 summary = booking_financial_summary(
-                    Decimal(selling), Decimal(paid), Decimal(pending)
+                    Decimal(selling), None, Decimal(paid), Decimal(pending)
                 )
                 self.assertEqual(summary["booking_financial_status"], expected_status)
                 self.assertEqual(summary["requested_amount"], Decimal(expected_requested))
+
+    def test_financial_status_cases_and_balance_never_negative(self):
+        cases = [
+            (None, "0", "0", False, "unpaid"),
+            (None, "0", "500", False, "depositrequested"),
+            ("1500", "1500", "0", False, "depositpaid"),
+            (None, "500", "0", False, "partiallypaid"),
+            (None, "100", "400", False, "partiallypaid"),
+            (None, "10000", "0", False, "paid"),
+            (None, "100", "0", True, "overdue"),
+        ]
+        for deposit, paid, pending, overdue, expected in cases:
+            with self.subTest(expected=expected):
+                summary = booking_financial_summary(
+                    Decimal("10000"), Decimal(deposit) if deposit else None,
+                    Decimal(paid), Decimal(pending), overdue,
+                )
+                self.assertEqual(summary["booking_financial_status"], expected)
+                self.assertGreaterEqual(summary["balance_due"], Decimal("0.00"))
+
+    def test_payment_records_only_count_valid_positive_same_currency_amounts(self):
+        result = aggregate_payment_records([
+            {"amount": "100", "currency": "THB", "status": "paid"},
+            {"amount": "200", "currency": "THB", "status": "partiallypaid"},
+            {"amount": "25", "currency": "THB", "status": "pending"},
+            {"amount": "900", "currency": "THB", "status": "cancelled"},
+            {"amount": "400", "currency": "USD", "status": "paid"},
+            {"amount": "-10", "currency": "THB", "status": "paid"},
+        ], "THB")
+        self.assertEqual(result["paid_amount"], Decimal("300.00"))
+        self.assertEqual(result["pending_amount"], Decimal("25.00"))
+
+    def test_payment_status_contract_and_legacy_alias(self):
+        for status in ("draft", "requested", "pending", "paid", "partiallypaid", "overdue", "cancelled"):
+            self.assertEqual(normalize_payment_status(status), status)
+        self.assertEqual(normalize_payment_status("Partially_Paid"), "partiallypaid")
+        with self.assertRaises(ValueError):
+            normalize_payment_status("refunded")
+
+    def test_expired_open_payment_derives_overdue(self):
+        now = datetime(2026, 10, 16, tzinfo=timezone.utc)
+        result = aggregate_payment_records([
+            {
+                "amount": "75", "currency": "THB", "status": "pending",
+                "due_at": datetime(2026, 10, 15, tzinfo=timezone.utc),
+            },
+        ], "THB", now=now)
+        summary = booking_financial_summary(100, None, result["paid_amount"], result["pending_amount"], result["has_overdue"])
+        self.assertEqual(result["pending_amount"], Decimal("75.00"))
+        self.assertEqual(summary["booking_financial_status"], "overdue")
+
+
+class PaymentPayloadValidationTests(unittest.TestCase):
+    def test_new_payment_statuses_are_accepted_and_unknown_statuses_rejected(self):
+        from pydantic import ValidationError
+        from app.routers.payments import PaymentCreate
+
+        base = {
+            "booking_id": str(uuid4()), "amount": "1.00", "method": "Bank transfer",
+        }
+        for status in ("draft", "requested", "pending", "paid", "partiallypaid", "overdue", "cancelled"):
+            with self.subTest(status=status):
+                self.assertEqual(PaymentCreate(**base, status=status).status, status)
+        with self.assertRaises(ValidationError):
+            PaymentCreate(**base, status="refunded")
+
+    def test_currency_requires_three_letters_and_positive_amount(self):
+        from pydantic import ValidationError
+        from app.routers.payments import PaymentCreate
+
+        base = {
+            "booking_id": str(uuid4()), "amount": "1.00", "method": "Cash", "status": "paid",
+        }
+        self.assertEqual(PaymentCreate(**base, currency="thb").currency, "THB")
+        with self.assertRaises(ValidationError):
+            PaymentCreate(**base, currency="   ")
+        with self.assertRaises(ValidationError):
+            PaymentCreate(**{**base, "amount": "0"})
+
+    def test_booking_deposit_must_not_exceed_total(self):
+        from pydantic import ValidationError
+        from app.routers.bookings import BookingCreate
+
+        base = {"booking_code": "TST-DEPOSIT", "selling_price": "1000.00"}
+        self.assertEqual(BookingCreate(**base, deposit_amount="1000.00").deposit_amount, Decimal("1000.00"))
+        with self.assertRaises(ValidationError):
+            BookingCreate(**base, deposit_amount="1000.01")
 
 
 TEST_DATABASE_URL = os.getenv("TCT_TEST_DATABASE_URL")
@@ -53,16 +142,49 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
                 CREATE TABLE customers (
                     id uuid PRIMARY KEY,
                     display_name text,
-                    email text
+                    email text,
+                    phone text,
+                    whatsapp text,
+                    country text,
+                    nationality text,
+                    preferred_language text
                 );
                 CREATE TABLE bookings (
                     id uuid PRIMARY KEY,
                     booking_code text UNIQUE NOT NULL,
                     selling_price numeric(12,2) NOT NULL,
+                    deposit_amount numeric(12,2),
                     currency char(3) NOT NULL DEFAULT 'THB',
                     customer_id uuid REFERENCES customers(id),
                     status text NOT NULL DEFAULT 'Inquiry',
-                    source text
+                    source text,
+                    tour_id uuid,
+                    tour_date date,
+                    pickup_time time,
+                    pickup_location_id uuid,
+                    dropoff_location_id uuid,
+                    adults int DEFAULT 0,
+                    children int DEFAULT 0,
+                    infants int DEFAULT 0,
+                    guide_language text,
+                    imported_raw_tour_name text,
+                    mapping_status text,
+                    needs_manual_review boolean,
+                    created_at timestamptz DEFAULT now()
+                );
+                CREATE TABLE tours (
+                    id uuid PRIMARY KEY,
+                    tour_code text,
+                    name text,
+                    category text,
+                    default_duration_hours numeric,
+                    website_url text
+                );
+                CREATE TABLE locations (
+                    id uuid PRIMARY KEY,
+                    name text,
+                    address text,
+                    google_maps_url text
                 );
                 CREATE TABLE payments (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -75,6 +197,16 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
                     due_at timestamptz,
                     reference varchar(255),
                     notes text
+                );
+                CREATE TABLE guides (id uuid PRIMARY KEY, name text, languages jsonb, phone text, line_id text);
+                CREATE TABLE drivers (id uuid PRIMARY KEY, name text, phone text, line_id text);
+                CREATE TABLE assignments (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), booking_id uuid, assignment_type text,
+                    guide_id uuid, driver_id uuid, cost numeric(12,2), status text, notes text
+                );
+                CREATE TABLE pricing_quotes (
+                    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), booking_id uuid,
+                    breakdown jsonb, created_at timestamptz DEFAULT now()
                 );
                 CREATE TABLE invoices (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -152,6 +284,59 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         self.assertEqual(Decimal(str(summary["requested_amount"])), Decimal("1600.00"))
         self.assertEqual(summary["booking_financial_status"], "partiallypaid")
 
+    def test_booking_without_payments_returns_zero_balances(self):
+        from app.routers import bookings
+
+        summary = bookings.get_booking_payment_summary(self.booking_code)
+        self.assertEqual(Decimal(str(summary["total_amount"])), Decimal("10500.00"))
+        self.assertEqual(Decimal(str(summary["paid_amount"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(summary["balance_due"])), Decimal("10500.00"))
+        self.assertEqual(summary["booking_financial_status"], "unpaid")
+
+    def test_payment_currency_must_match_booking_currency(self):
+        from fastapi import HTTPException
+        from app.routers.payments import PaymentCreate, create_payment
+
+        with self.assertRaises(HTTPException) as error:
+            create_payment(PaymentCreate(
+                booking_id=self.booking_id,
+                amount=Decimal("10"),
+                currency="USD",
+                method="Bank transfer",
+                status="paid",
+            ))
+        self.assertEqual(error.exception.status_code, 422)
+        with self.connection_factory() as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM payments WHERE booking_id = %s", (self.booking_id,)
+            ).fetchone()[0]
+        self.assertEqual(count, 0)
+
+    def test_full_booking_detail_returns_financial_summary_and_payment_metadata(self):
+        from app.routers import bookings
+
+        with self.connection_factory() as conn:
+            conn.execute(
+                "UPDATE bookings SET deposit_amount = 2000.00 WHERE id = %s", (self.booking_id,)
+            )
+            conn.execute(
+                "INSERT INTO payments (booking_id, amount, currency, method, status, paid_at, due_at, notes) "
+                "VALUES (%s, 2000.00, 'THB', 'Bank transfer', 'paid', now(), now() + interval '15 days', 'Deposit receipt')",
+                (self.booking_id,),
+            )
+            conn.commit()
+
+        result = bookings.get_booking_full_detail(self.booking_code)
+        summary = result["payment_summary"]
+        self.assertEqual(result["booking"]["status"], "Inquiry")
+        self.assertEqual(Decimal(str(summary["total_amount"])), Decimal("10500.00"))
+        self.assertEqual(Decimal(str(summary["deposit_amount"])), Decimal("2000.00"))
+        self.assertEqual(Decimal(str(summary["paid_amount"])), Decimal("2000.00"))
+        self.assertEqual(Decimal(str(summary["balance_due"])), Decimal("8500.00"))
+        self.assertEqual(summary["booking_financial_status"], "depositpaid")
+        self.assertEqual(result["payments"][0]["notes"], "Deposit receipt")
+        self.assertIsNotNone(result["payments"][0]["due_at"])
+
     def test_invalid_payment_amount_and_field_lengths_do_not_insert(self):
         payload = {
             "booking_id": str(self.booking_id),
@@ -166,6 +351,9 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             PaymentCreate(**payload)
         payload["amount"] = "10.00"
+        payload["status"] = "refunded"
+        with self.assertRaises(ValidationError):
+            PaymentCreate(**payload)
         payload["method"] = "x" * 41
         with self.assertRaises(ValidationError):
             PaymentCreate(**payload)

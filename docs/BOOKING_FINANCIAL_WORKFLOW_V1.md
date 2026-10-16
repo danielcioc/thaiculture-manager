@@ -1,6 +1,6 @@
 # ThaiCulture Manager — Booking Financial Workflow v1
 
-Last updated: 2026-07-24
+Last updated: 2026-10-16
 
 ## Purpose
 
@@ -126,6 +126,19 @@ The standard financial logic should be:
 - balance due = total amount - deposit paid, unless full payment already exists
 - deposit outstanding = deposit requested - deposit paid
 
+### Implemented contract in V1.1
+
+- `total_amount` maps to `bookings.selling_price`; no duplicate total-price column is introduced.
+- `deposit_amount` is an optional explicit booking amount. A nullable column is added; existing bookings remain `NULL` because a safe historical backfill is not available.
+- `paid_amount` includes only positive `paid` or `partiallypaid` payment rows whose currency matches the booking currency.
+- `pending_amount` includes only positive `requested`, `pending`, or `overdue` rows in the booking currency.
+- `balance_due = max(total_amount - paid_amount, 0)`.
+- `requested_amount` remains the compatibility aggregate of paid plus open requested amounts; it is not a proforma amount.
+- An open request with a past due date, or an explicit overdue row, derives booking financial status `overdue` while a balance remains.
+- Booking financial status precedence is: `paid`, `overdue`, `depositpaid` when a configured positive deposit is covered, `partiallypaid`, `depositrequested`, then `unpaid`.
+- Payment statuses accepted for new writes are `draft`, `requested`, `pending`, `paid`, `partiallypaid`, `overdue`, and `cancelled`. Reads normalize legacy `partially_paid` and `Partially Paid` aliases.
+- Operational booking status remains an independent field and is never changed by financial derivation.
+
 If partial or multiple payments exist, calculations must always be derived from payment records, not handwritten assumptions.
 
 ## Payment methods
@@ -155,7 +168,7 @@ At minimum, the workflow should support these statuses:
 - requested
 - pending
 - paid
-- partially_paid
+- partiallypaid
 - overdue
 - cancelled
 
@@ -173,7 +186,7 @@ Waiting for customer transfer or confirmation.
 **paid**  
 Payment fully received and confirmed.
 
-**partially_paid**  
+**partiallypaid**
 Only part of the expected amount has been received.
 
 **overdue**  
@@ -188,9 +201,9 @@ In addition to payment-level statuses, each booking should expose a financial su
 
 Recommended booking financial statuses:
 - unpaid
-- deposit_requested
-- deposit_paid
-- partially_paid
+- depositrequested
+- depositpaid
+- partiallypaid
 - paid
 - overdue
 

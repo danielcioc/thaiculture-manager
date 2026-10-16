@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Literal, Optional
 from datetime import date, time
 from decimal import Decimal
@@ -8,7 +8,7 @@ from uuid import UUID
 from app.audit import AuditIdempotencyConflict, run_idempotent_audit_event
 from app.auth import CurrentUser, require_permission
 from app.database import get_connection
-from app.financials import PAYMENT_TOTALS_SQL, booking_financial_summary
+from app.financials import PAYMENT_TOTALS_SQL, booking_financial_summary, payment_status_for_response
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -29,7 +29,14 @@ class BookingCreate(BaseModel):
     infants: int = 0
     guide_language: str = "EN"
     selling_price: Decimal = Decimal("0.00")
+    deposit_amount: Optional[Decimal] = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     currency: str = "THB"
+
+    @model_validator(mode="after")
+    def deposit_does_not_exceed_total(self):
+        if self.deposit_amount is not None and self.deposit_amount > self.selling_price:
+            raise ValueError("Deposit amount cannot exceed selling price")
+        return self
 
 
 MappingStatus = Literal["confirmed", "probable_manual_review", "unmapped"]
@@ -118,6 +125,7 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                     (COALESCE(b.adults, 0) + COALESCE(b.children, 0) + COALESCE(b.infants, 0)) AS total_guests,
                     b.guide_language,
                     b.selling_price,
+                    b.deposit_amount,
                     b.currency,
                     b.imported_raw_tour_name,
                     b.mapping_status,
@@ -127,6 +135,7 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                     COALESCE(pay.paid_amount, 0) AS paid_amount,
                     COALESCE(pay.pending_amount, 0) AS pending_amount,
                     COALESCE(pay.requested_amount, 0) AS requested_amount,
+                    COALESCE(pay.has_overdue, false) AS has_overdue,
 
                     COALESCE(ac.assignment_guide_cost, 0) AS assignment_guide_cost,
                     COALESCE(ac.assignment_driver_cost, 0) AS assignment_driver_cost,
@@ -142,9 +151,10 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                 LEFT JOIN locations dropoff ON dropoff.id = b.dropoff_location_id
 
                 LEFT JOIN (
-                    SELECT booking_id, {PAYMENT_TOTALS_SQL}
-                    FROM payments
-                    GROUP BY booking_id
+                    SELECT p.booking_id, {PAYMENT_TOTALS_SQL}
+                    FROM payments p
+                    JOIN bookings b ON b.id = p.booking_id
+                    GROUP BY p.booking_id, b.currency
                 ) pay ON pay.booking_id = b.id
 
                 LEFT JOIN (
@@ -182,6 +192,8 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
         paid_amount = float(item.pop("paid_amount", 0) or 0)
         pending_amount = float(item.pop("pending_amount", 0) or 0)
         requested_amount = float(item.pop("requested_amount", 0) or 0)
+        has_overdue = bool(item.pop("has_overdue", False))
+        deposit_amount = item.get("deposit_amount")
 
         assignment_guide_cost = float(item.pop("assignment_guide_cost", 0) or 0)
         assignment_driver_cost = float(item.pop("assignment_driver_cost", 0) or 0)
@@ -297,7 +309,7 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
                 margin_percent = 0
 
         booking_financial_status = booking_financial_summary(
-            selling_price, paid_amount, pending_amount
+            selling_price, deposit_amount, paid_amount, pending_amount, has_overdue
         )["booking_financial_status"]
 
         item["booking_financial_status"] = booking_financial_status
@@ -360,6 +372,7 @@ def get_booking(booking_code: str):
                     (COALESCE(b.adults, 0) + COALESCE(b.children, 0) + COALESCE(b.infants, 0)) AS total_guests,
                     b.guide_language,
                     b.selling_price,
+                    b.deposit_amount,
                     b.currency,
                     b.imported_raw_tour_name,
                     b.mapping_status,
@@ -391,6 +404,7 @@ def get_booking_payment_summary(booking_code: str):
                     b.id,
                     b.booking_code,
                     b.selling_price,
+                    b.deposit_amount,
                     b.currency,
                     c.display_name AS customer_name
                 FROM bookings b
@@ -408,15 +422,18 @@ def get_booking_payment_summary(booking_code: str):
 
             cur.execute(f"""
                 SELECT {PAYMENT_TOTALS_SQL}
-                FROM payments
-                WHERE booking_id = %s;
+                FROM bookings b
+                LEFT JOIN payments p ON p.booking_id = b.id
+                WHERE b.id = %s
+                GROUP BY b.currency;
             """, (booking_data["id"],))
 
             payment_totals = cur.fetchone()
 
     selling_price = booking_data["selling_price"]
     financial_summary = booking_financial_summary(
-        selling_price, payment_totals[0], payment_totals[1]
+        selling_price, booking_data["deposit_amount"], payment_totals[0],
+        payment_totals[1], payment_totals[3]
     )
 
     return {
@@ -449,11 +466,12 @@ def create_booking(payload: BookingCreate):
                         infants,
                         guide_language,
                         selling_price,
+                        deposit_amount,
                         currency
                     )
                     VALUES (
                         %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     RETURNING
                         id,
@@ -471,6 +489,7 @@ def create_booking(payload: BookingCreate):
                         infants,
                         guide_language,
                         selling_price,
+                        deposit_amount,
                         currency,
                         created_at;
                 """, (
@@ -488,6 +507,7 @@ def create_booking(payload: BookingCreate):
                     payload.infants,
                     payload.guide_language,
                     payload.selling_price,
+                    payload.deposit_amount,
                     payload.currency,
                 ))
 
@@ -614,6 +634,7 @@ def get_booking_full_detail(booking_code: str):
                     (COALESCE(b.adults, 0) + COALESCE(b.children, 0) + COALESCE(b.infants, 0)) AS total_guests,
                     b.guide_language,
                     b.selling_price,
+                    b.deposit_amount,
                     b.currency,
                     b.imported_raw_tour_name,
                     b.mapping_status,
@@ -644,7 +665,9 @@ def get_booking_full_detail(booking_code: str):
                     method,
                     status,
                     paid_at,
-                    reference
+                    due_at,
+                    reference,
+                    notes
                 FROM payments
                 WHERE booking_id = %s
                 ORDER BY paid_at DESC NULLS LAST, amount ASC;
@@ -653,12 +676,16 @@ def get_booking_full_detail(booking_code: str):
             payment_rows = cur.fetchall()
             payment_columns = [desc[0] for desc in cur.description]
             payments = [dict(zip(payment_columns, row)) for row in payment_rows]
+            for payment in payments:
+                payment["status"] = payment_status_for_response(payment["status"], payment["due_at"])
 
             # Payment summary
             cur.execute(f"""
                 SELECT {PAYMENT_TOTALS_SQL}
-                FROM payments
-                WHERE booking_id = %s;
+                FROM bookings b
+                LEFT JOIN payments p ON p.booking_id = b.id
+                WHERE b.id = %s
+                GROUP BY b.currency;
             """, (booking_data["id"],))
 
             payment_totals = cur.fetchone()
@@ -708,8 +735,10 @@ def get_booking_full_detail(booking_code: str):
 
             financial_summary = booking_financial_summary(
                 selling_price,
+                booking_data["deposit_amount"],
                 float(payment_totals[0] or 0),
                 float(payment_totals[1] or 0),
+                bool(payment_totals[3]),
             )
             paid_amount = financial_summary["paid_amount"]
             pending_amount = financial_summary["pending_amount"]
@@ -865,10 +894,14 @@ def get_booking_full_detail(booking_code: str):
                 "payments": payments,
                 "payment_summary": {
                     "selling_price": selling_price,
+                    "total_amount": financial_summary["total_amount"],
+                    "deposit_amount": financial_summary["deposit_amount"],
+                    "deposit_paid_amount": financial_summary["deposit_paid_amount"],
                     "paid_amount": paid_amount,
                     "pending_amount": pending_amount,
                     "requested_amount": requested_amount,
                     "outstanding_amount": outstanding_amount,
+                    "balance_due": financial_summary["balance_due"],
                     "remaining_unrequested_amount": remaining_unrequested_amount,
                     "payment_status": payment_status,
                     "booking_financial_status": booking_financial_status,

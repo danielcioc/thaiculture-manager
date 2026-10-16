@@ -105,9 +105,14 @@ export type BookingDetailResponse = {
     imported_raw_tour_name: string | null;
     mapping_status: MappingStatus | null;
     needs_manual_review: boolean | null;
+    deposit_amount: number | null;
   };
   payments: Payment[];
   payment_summary: {
+    total_amount: number;
+    deposit_amount: number | null;
+    deposit_paid_amount: number | null;
+    balance_due: number;
     selling_price: number;
     paid_amount: number;
     pending_amount: number;

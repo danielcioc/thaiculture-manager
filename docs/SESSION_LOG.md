@@ -246,3 +246,12 @@
 - Distinguished stale booking-mapping conflicts from reused request-ID payload conflicts. A 409 disables another submission until the queue is reloaded; transport failures retain the original request ID for safe retry.
 - Added frontend tests for filters/counts, sorting/pagination without duplicates, conflict classification, and the approval API's success/403/409 paths. All 7 frontend tests passed; production build and lint passed.
 - No backend/API/schema, booking status, mapping data, payment, financial, or operational database changes were made. Staging validation remains pending operator provisioning of `.env.staging`.
+
+## 2026-10-16 Booking Financial Workflow V1.1
+
+- Added nullable `bookings.deposit_amount` through `20261016_add_booking_deposit_amount.sql`; no defaults, constraints, or historical backfill.
+- Centralized payment status normalization and financial derivation. Only positive same-currency paid/partiallypaid amounts enter paid totals; open requests feed pending totals; cancelled and draft are excluded. Balance never falls below zero.
+- Added total/deposit/paid/balance/status to booking financial summary and full detail. Payment details include due date and notes. Payment writes validate the seven canonical statuses and booking currency.
+- Booking Detail now presents a separate financial summary with empty/loading/error states. Operational booking status, review behavior, and margin formulas were left unchanged; invoice generation was not added.
+- Staging remains separate. No operational database was accessed.
+- Verification: financial/API tests passed against a dedicated temporary PostgreSQL container; the migration was applied after the initial schema in a disposable schema and verified as nullable `numeric(12,2)` with no default. Auth (10), visibility (1), compileall, frontend tests (9), build, lint, and `git diff --check` passed. The final full backend suite ran 67 tests: 66 passed and the existing `test_current_payment_import_inserts_row` failed because its payment CSV fixture lacks `amount`; no tests were skipped with the isolated test DB available. The temporary container, volume, network, and helper files were removed.

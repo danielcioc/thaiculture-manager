@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 
 from app.database import get_connection
+from app.financials import normalize_payment_status, payment_status_for_response
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -15,11 +16,27 @@ class PaymentCreate(BaseModel):
     amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2, examples=["3000.00"])
     currency: str = Field(default="THB", min_length=3, max_length=3)
     method: str = Field(..., min_length=1, max_length=40, examples=["Thai QR"])
-    status: str = Field(default="Pending", min_length=1, max_length=40, examples=["Pending"])
+    status: str = Field(default="pending", min_length=1, max_length=40, examples=["pending"])
     paid_at: Optional[datetime] = None
     due_at: Optional[datetime] = None
     reference: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value):
+        try:
+            return normalize_payment_status(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_currency(cls, value):
+        normalized = value.strip().upper()
+        if len(normalized) != 3 or not normalized.isalpha():
+            raise ValueError("Currency must be a three-letter code")
+        return normalized
 
 
 @router.get("")
@@ -51,7 +68,10 @@ def list_payments():
 
     return {
         "count": len(rows),
-        "items": [dict(zip(columns, row)) for row in rows],
+        "items": [
+            {**dict(zip(columns, row)), "status": payment_status_for_response(row[7], row[9])}
+            for row in rows
+        ],
     }
 
 
@@ -60,6 +80,12 @@ def create_payment(payload: PaymentCreate):
     with get_connection() as conn:
         with conn.cursor() as cur:
             try:
+                cur.execute("SELECT currency FROM bookings WHERE id = %s", (payload.booking_id,))
+                booking = cur.fetchone()
+                if booking is None:
+                    raise HTTPException(status_code=404, detail="Booking not found")
+                if str(booking[0]).strip().upper() != payload.currency:
+                    raise HTTPException(status_code=422, detail="Payment currency must match booking currency")
                 cur.execute("""
                     INSERT INTO payments (
                         booking_id,
@@ -102,9 +128,13 @@ def create_payment(payload: PaymentCreate):
 
             except Exception as exc:
                 conn.rollback()
+                if isinstance(exc, HTTPException):
+                    raise
                 raise HTTPException(status_code=400, detail=str(exc))
 
-    return dict(zip(columns, row))
+    result = dict(zip(columns, row))
+    result["status"] = payment_status_for_response(result["status"], result.get("due_at"))
+    return result
 
 
 @router.get("/booking/{booking_code}")
@@ -138,16 +168,27 @@ def list_payments_for_booking(booking_code: str):
     return {
         "booking_code": booking_code,
         "count": len(rows),
-        "items": [dict(zip(columns, row)) for row in rows],
+        "items": [
+            {**dict(zip(columns, row)), "status": payment_status_for_response(row[7], row[9])}
+            for row in rows
+        ],
     }
 
 
 class PaymentStatusUpdate(BaseModel):
-    status: str = Field(..., examples=["Paid"])
+    status: str = Field(..., examples=["paid"])
     paid_at: Optional[datetime] = None
     due_at: Optional[datetime] = None
     reference: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value):
+        try:
+            return normalize_payment_status(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 @router.patch("/{payment_id}/status")
@@ -172,7 +213,9 @@ def update_payment_status(payment_id: UUID, payload: PaymentStatusUpdate):
                         method,
                         status,
                         paid_at,
-                        reference;
+                        due_at,
+                        reference,
+                        notes;
                 """, (
                     payload.status,
                     payload.paid_at,
@@ -198,4 +241,6 @@ def update_payment_status(payment_id: UUID, payload: PaymentStatusUpdate):
                 conn.rollback()
                 raise HTTPException(status_code=400, detail=str(exc))
 
-    return dict(zip(columns, row))
+    result = dict(zip(columns, row))
+    result["status"] = payment_status_for_response(result["status"], result.get("due_at"))
+    return result

@@ -78,3 +78,10 @@ At the next session start, read in this order:
 3. the latest section in `docs/SESSION_LOG.md`
 4. `docs/HANDOFF.md`
 5. only then inspect code
+
+## Booking Financial Workflow V1.1 — 2026-10-16
+
+- `bookings.selling_price` is exposed as `total_amount`; nullable `bookings.deposit_amount` is added by `database/migrations/20261016_add_booking_deposit_amount.sql`. Historical deposits are not backfilled.
+- Payment writes accept the seven V1.1 statuses. Paid totals include only positive same-currency `paid`/`partiallypaid` rows. Cancelled, draft, invalid, non-positive, and currency-mismatched rows are excluded.
+- Balance is clamped to zero. Financial status is derived independently from operational booking status. Booking Detail shows a distinct financial summary and payment list; no invoice automation was added.
+- Staging validation remains separate and pending provisioning. No operational database was accessed for this milestone.

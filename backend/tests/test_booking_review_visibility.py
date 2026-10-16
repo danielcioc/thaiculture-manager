@@ -10,9 +10,9 @@ LIST_COLUMNS = [
     "tour_duration_hours", "pickup_location_name", "pickup_location_address",
     "pickup_google_maps_url", "dropoff_location_name", "dropoff_location_address",
     "dropoff_google_maps_url", "tour_date", "pickup_time", "adults", "children",
-    "infants", "total_guests", "guide_language", "selling_price", "currency",
+    "infants", "total_guests", "guide_language", "selling_price", "deposit_amount", "currency",
     "imported_raw_tour_name", "mapping_status", "needs_manual_review", "created_at",
-    "paid_amount", "pending_amount", "requested_amount", "assignment_guide_cost",
+    "paid_amount", "pending_amount", "requested_amount", "has_overdue", "assignment_guide_cost",
     "assignment_driver_cost", "assignment_other_cost", "assignment_total_cost",
     "quote_breakdown",
 ]
@@ -27,7 +27,7 @@ DETAIL_COLUMNS = [
     "dropoff_location_address", "dropoff_google_maps_url", "tour_date", "pickup_time",
     "adults", "children", "infants", "total_guests", "guide_language", "selling_price",
     "currency", "imported_raw_tour_name", "mapping_status", "needs_manual_review",
-    "created_at",
+    "created_at", "deposit_amount",
 ]
 
 
@@ -51,15 +51,18 @@ class ReadOnlyBookingCursor:
         if self.mode == "list":
             self.columns = LIST_COLUMNS
             self.result = self.booking
-        elif "FROM bookings b" in query:
+        elif "FROM bookings b" in query and "LEFT JOIN payments" not in query:
             self.columns = DETAIL_COLUMNS
             self.result = self.booking
         elif "FROM payments" in query and "ORDER BY paid_at" in query:
-            self.columns = ["id", "amount", "currency", "method", "status", "paid_at", "reference"]
+            self.columns = ["id", "amount", "currency", "method", "status", "paid_at", "due_at", "reference", "notes"]
             self.result = []
         elif "FROM payments" in query:
-            self.columns = ["paid_amount", "pending_amount", "requested_amount"]
-            self.result = (0, 0, 0)
+            self.columns = ["paid_amount", "pending_amount", "requested_amount", "has_overdue"]
+            self.result = (0, 0, 0, False)
+        elif "LEFT JOIN payments" in query:
+            self.columns = ["paid_amount", "pending_amount", "requested_amount", "has_overdue"]
+            self.result = (0, 0, 0, False)
         elif "FROM assignments a" in query:
             self.columns = [
                 "id", "assignment_type", "guide_name", "guide_languages", "guide_phone",
@@ -142,6 +145,7 @@ def booking_fixture(
         "total_guests": 1,
         "guide_language": "EN",
         "selling_price": 1000,
+        "deposit_amount": None,
         "currency": "THB",
         "imported_raw_tour_name": raw_label,
         "mapping_status": mapping_status,
@@ -150,6 +154,7 @@ def booking_fixture(
         "paid_amount": 0,
         "pending_amount": 0,
         "requested_amount": 0,
+        "has_overdue": False,
         "assignment_guide_cost": 0,
         "assignment_driver_cost": 0,
         "assignment_other_cost": 0,
