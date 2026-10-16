@@ -1,6 +1,18 @@
 import type { PricingRule, PricingQuote } from '../types/tours';
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+import type { ImportReviewDecisionRequest, ImportReviewDecisionResponse } from '../types/bookings';
+
+export const API_BASE = import.meta.env?.VITE_API_BASE || 'http://127.0.0.1:8000';
+
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
 
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`);
@@ -60,4 +72,28 @@ export async function getPricingRules() {
 
 export async function getPricingRuleByTourCode(tourCode: string) {
   return apiGet<PricingRule>(`/pricing/tours/${tourCode}`);
+}
+
+export async function approveImportReview(
+  bookingCode: string,
+  request: ImportReviewDecisionRequest,
+  bearerToken: string,
+): Promise<ImportReviewDecisionResponse> {
+  const response = await fetch(
+    `${API_BASE}/bookings/${encodeURIComponent(bookingCode)}/import-review/decision`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${bearerToken}`,
+      },
+      body: JSON.stringify(request),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof payload.detail === 'string' ? payload.detail : '';
+    throw new ApiError(detail || `Review approval failed (${response.status})`, response.status);
+  }
+  return payload as ImportReviewDecisionResponse;
 }

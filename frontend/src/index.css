@@ -376,6 +376,110 @@ p {
   gap: 8px;
 }
 
+.review-queue {
+  display: grid;
+  gap: 18px;
+}
+
+.review-token-field,
+.review-approval-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--soft);
+  font-size: 0.9rem;
+}
+
+.review-token-field input,
+.review-approval-form select,
+.review-approval-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.review-queue-list {
+  display: grid;
+  gap: 12px;
+}
+
+.review-queue-item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(15, 27, 52, 0.52);
+}
+
+.review-booking-select {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+}
+
+.review-booking-select span:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.review-booking-select small,
+.review-request-id,
+.review-approval-form .section-subtitle {
+  color: var(--muted);
+}
+
+.review-approval-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+.review-approval-form fieldset {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.review-approval-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.review-approval-form .review-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.review-confirmation input {
+  margin-top: 4px;
+}
+
+.review-request-id code {
+  overflow-wrap: anywhere;
+}
+
+.review-feedback-error {
+  color: #fecaca;
+}
+
+.review-feedback-success {
+  color: #bbf7d0;
+}
+
 .mapping-badge,
 .needs-review {
   min-height: 28px;

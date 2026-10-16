@@ -12,6 +12,7 @@ import { DriversList } from './components/DriversList';
 import { LocationsList } from './components/LocationsList';
 import { InvoicesList } from './components/InvoicesList';
 import { InvoiceDetail } from './components/InvoiceDetail';
+import { ImportReviewQueue } from './components/ImportReviewQueue';
 import type { BookingDetailResponse, BookingsResponse } from './types/bookings';
 import type { PricingQuote } from './types/tours';
 import type { CustomersResponse } from './types/customers';
@@ -28,6 +29,7 @@ import { formatCurrency } from './utils/formatters';
 type View =
   | 'dashboard'
   | 'bookings'
+  | 'review_queue'
   | 'customers'
   | 'invoices'
   | 'tours'
@@ -198,6 +200,8 @@ function App() {
   };
 
   const renderContent = () => {
+    if (view === 'review_queue') return <ImportReviewQueue />;
+
     if (view === 'bookings') {
       return !isDetailView ? (
         <BookingsList
@@ -352,21 +356,21 @@ function App() {
         </div>
 
         <nav className="tabs tabs-desktop" aria-label="Primary sections">
-          {(['dashboard', 'bookings', 'customers', 'invoices', 'tours', 'assignments', 'payments', 'guides', 'drivers', 'locations'] as View[]).map((item) => (
+          {(['dashboard', 'bookings', 'review_queue', 'customers', 'invoices', 'tours', 'assignments', 'payments', 'guides', 'drivers', 'locations'] as View[]).map((item) => (
             <button
               key={item}
               type="button"
               className={view === item ? 'tab active' : 'tab'}
               onClick={() => goToView(item)}
             >
-              {item[0].toUpperCase() + item.slice(1)}
+              {item === 'review_queue' ? 'Review Queue' : item[0].toUpperCase() + item.slice(1)}
             </button>
           ))}
         </nav>
 
         {mobileNavOpen && (
           <div className="mobile-nav-drawer" id="mobile-sections">
-            {(['dashboard', 'bookings', 'customers', 'invoices', 'tours', 'assignments', 'payments', 'guides', 'drivers', 'locations'] as View[]).map((item) => (
+            {(['dashboard', 'bookings', 'review_queue', 'customers', 'invoices', 'tours', 'assignments', 'payments', 'guides', 'drivers', 'locations'] as View[]).map((item) => (
               <button
                 key={item}
                 type="button"
@@ -378,7 +382,7 @@ function App() {
                   setMobileNavOpen(false);
                 }}
               >
-                {item[0].toUpperCase() + item.slice(1)}
+                {item === 'review_queue' ? 'Review Queue' : item[0].toUpperCase() + item.slice(1)}
               </button>
             ))}
           </div>

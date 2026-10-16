@@ -1,5 +1,29 @@
 export type MappingStatus = 'confirmed' | 'probable_manual_review' | 'unmapped';
 
+export type ImportReviewDecisionRequest = {
+  expected_mapping_status: MappingStatus;
+  expected_tour_id: string | null;
+  expected_needs_manual_review: boolean;
+  mapping_status: MappingStatus;
+  tour_id: string | null;
+  reason: string;
+  confirm: boolean;
+  request_id: string;
+};
+
+export type ImportReviewDecisionResponse = {
+  booking_id: string;
+  booking_code: string;
+  status: string;
+  imported_raw_tour_name: string | null;
+  mapping_status: MappingStatus;
+  needs_manual_review: boolean;
+  tour_id: string | null;
+  tour_name: string | null;
+  review_event_id: string;
+  replayed: boolean;
+};
+
 export type BookingListItem = {
   id: string;
   booking_code: string;
