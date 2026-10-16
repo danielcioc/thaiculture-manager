@@ -2,7 +2,7 @@
 
 ## Current task status
 
-Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd`, resolver-unification commit `fb62159`, importer metadata migration commit `3738923`, read-only visibility commit `6bf68a2`, and approval design commit `fab5417` are published on `origin/main`. The current local checkpoint adds an opt-in server-side authentication and authorization foundation; it is not yet committed.
+Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd`, resolver-unification commit `fb62159`, importer metadata migration commit `3738923`, read-only visibility commit `6bf68a2`, approval design commit `fab5417`, auth foundation commit `e2a39bb`, and audit migration commit `c0ecf45` are published on `origin/main`.
 
 ## Last confirmed state
 
@@ -15,7 +15,8 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 - Importer resolver unification and the phase-3 importer/schema checks did not access the operational database.
 - The read-only importer-review visibility checkpoint exposes the raw imported tour label, mapping status, review flag, and canonical tour data in booking list/detail. Missing tours display as `Needs review`; no edit or approval action is present. Backend visibility/importer tests (8), frontend build, and lint passed; no frontend test runner is configured. No database was accessed.
 - `backend/app/auth.py` validates externally issued HS256 JWTs, reloads active users and role permissions from PostgreSQL, and exposes `get_current_user` / `require_permission`. Permission JSON is a flat boolean map. Ten auth tests pass with mocked connections. No existing route was protected and no DB was accessed.
-- The importer review audit decision reuses `audit_log`. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` passed isolated PostgreSQL validation only; operational schema remains untouched. Exact actions, event payload, retention/access, and transaction rules are in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`. No runtime audit writer or approval endpoint exists.
+- The importer review audit decision reuses `audit_log`. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` passed isolated PostgreSQL validation only; operational schema remains untouched. Exact actions, event payload, retention/access, and transaction rules are in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`. The transactional helper is now implemented, but no approval endpoint invokes it.
+- `backend/app/audit.py` provides canonical payload hashing and a caller-transaction audit helper. It serializes same-actor/request attempts with a transaction-scoped advisory lock, returns the existing event for an identical retry, rejects a different payload hash, and leaves commit/rollback to the caller. Seven isolated PostgreSQL/unit tests pass. No approval endpoint calls it yet.
 
 ## Files added or changed in this phase
 
@@ -55,7 +56,7 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 
 ## Recommended next task
 
-Before importer-review approval, configure/provision a trusted JWT issuer and signing key, separately authorize operational application of the isolated-validated `audit_log` migration, then implement and test the protected write path. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
+Before importer-review approval, configure/provision a trusted JWT issuer and signing key, separately authorize operational application of the isolated-validated `audit_log` migration, then integrate the helper into and test the protected write path. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
 
 Keep the following existing questions open without assumptions: whether manual-review flags become an active review workflow, and how historical booking updates should be reapplied without delete-and-reimport. Defer website integration until the broader internal model is aligned.
 

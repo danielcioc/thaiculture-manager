@@ -29,7 +29,7 @@ ThaiCulture Manager este sistemul intern de operațiuni pentru ThaiCulture Tours
 - Idempotency is actor-scoped. Same key and normalized payload returns the original event; same key with a different payload returns 409. A first no-op consumes the key with one no-op event. Audit actions and before/after payload keys are specified in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`.
 - Entries are append-only with no automatic purge in v1. Access uses `bookings.import_review.audit.read`; writes use `bookings.import_review.approve` after authentication is configured.
 - Transaction plan: lock booking, validate expected old mapping fields, lock and verify active canonical tour, then update booking mapping fields and insert audit event in one transaction.
-- The persistence decision is documented in `docs/DECISIONS.md`; migration compatibility was validated in an isolated database only. No operational database was accessed or changed.
+- The persistence decision is documented in `docs/DECISIONS.md`; its migration compatibility was validated in isolated PostgreSQL only and remains unapplied operationally. `backend/app/audit.py` now provides canonical payload hashing, actor/request idempotency, and transaction-scoped audit insertion for caller-supplied business operations. PostgreSQL tests pass (7); no approval endpoint invokes the helper yet.
 
 ## Last verified operational database snapshot
 

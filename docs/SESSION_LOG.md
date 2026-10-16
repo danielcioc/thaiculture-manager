@@ -1,5 +1,13 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-16 transactional audit helper and idempotency
+
+- Added `backend/app/audit.py` with deterministic UTF-8 compact/sorted JSON canonicalization, UUID normalization, trimmed reason, and lowercase SHA-256 request hashing. `request_id` is excluded from the hash.
+- Added `run_idempotent_audit_event`, which uses the caller's PostgreSQL connection, obtains a transaction-scoped advisory lock for `(user_id, request_id)`, returns the existing audit event for a same-hash retry, and raises `AuditIdempotencyConflict` when the same actor/key has a different hash. For a new request it runs the supplied business callback and inserts the audit row in the same caller-owned transaction. It never commits, rolls back, or closes the connection; callback and database errors propagate.
+- Added isolated tests for canonical hash equivalence/difference, first write, same-key retry, conflicting payload, rollback after both booking and audit writes, callback error propagation, and transaction ownership.
+- All 7 tests passed against a temporary PostgreSQL 16 test container using the published audit migration. Container, volume, network, and schema fixture were removed.
+- No operational database was accessed. No migration, endpoint, frontend, booking mapping/status, payment behavior, or deduplication was changed.
+
 # 2026-10-15 isolated audit_log compatibility validation
 
 - Added `database/migrations/20261015_add_audit_log_idempotency_fields.sql`: nullable `request_id uuid`, `request_payload_hash varchar(64)`, actor email/name snapshots and `reason text`, plus partial unique index `(user_id, request_id) WHERE request_id IS NOT NULL`. No defaults, `NOT NULL`, `CHECK`, or backfill.
