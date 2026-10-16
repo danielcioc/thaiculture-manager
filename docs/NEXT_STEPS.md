@@ -73,8 +73,13 @@ These are existing project questions, not decisions made by the pricing or finan
 
 - A local-only adapter and opt-in Manager API now support Manager-priced quote previews and `Inquiry` submissions with idempotency. See `docs/WEBSITE_TO_MANAGER_INTEGRATION_V1.md`.
 - The current E2E environment uses its own Compose project, database, volume, network, and ports. Keep it available for manual review until Daniel confirms completion.
-- Do not expose `WEBSITE_INTEGRATION_ENABLED` publicly until release/security review addresses abuse controls, monitoring, inquiry-data retention, and operational provisioning.
+- Backend-local hardening is tracked in `docs/WEBSITE_PUBLIC_API_HARDENING.md`. Do not expose `WEBSITE_INTEGRATION_ENABLED` publicly until proxy-level abuse controls, monitoring, inquiry-data retention, and operational provisioning are approved and configured.
 - Pricing remains sourced from active approved Manager rules. Extras without configured prices are rejected. No adult/child tariff split, payment collection, proforma generation, or booking confirmation is inferred.
+
+## Website public API hardening — 2026-10-16
+
+- Keep the website feature flag false in staging and production. Local backend safeguards are implemented, but process-local limits are not a replacement for distributed proxy controls.
+- Obtain approval for quote/idempotency retention and the inquiry PII policy; assign monitoring/alert ownership before public exposure. No cleanup or external service access has occurred.
 
 ## Booking Financial Workflow V1.1 — 2026-10-16
 

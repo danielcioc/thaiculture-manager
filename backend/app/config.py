@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from typing import Optional
 
 
@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     auth_jwt_audience: Optional[str] = None
     website_integration_enabled: bool = False
     cors_allowed_origins: str = DEFAULT_LOCAL_CORS_ORIGINS
+    website_max_body_bytes: int = Field(default=16384, ge=1024, le=1048576)
+    website_catalog_requests_per_minute: int = Field(default=60, ge=1, le=10000)
+    website_pricing_requests_per_minute: int = Field(default=20, ge=1, le=10000)
+    website_bookings_requests_per_minute: int = Field(default=5, ge=1, le=10000)
+    website_db_connect_timeout_seconds: int = Field(default=5, ge=1, le=60)
+    website_db_statement_timeout_ms: int = Field(default=5000, ge=100, le=120000)
 
     class Config:
         env_file = ".env"

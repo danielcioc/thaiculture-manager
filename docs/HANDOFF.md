@@ -97,3 +97,9 @@ At the next session start, read in this order:
 - `/payments` accepts optional `status`, `sort_by=paid_at|due_at`, and `sort_order=asc|desc`; `/payments/summary` returns canonical status counts and collected amounts by currency. Payment rows expose `currency_matches_booking` and `financial_error`.
 - Payments and Booking Detail show all payment statuses, paid/due dates, notes, empty/loading/error states, and explicit currency mismatch warnings. Currency-mismatched payments do not contribute to collected or booking totals.
 - No schema changes or operational DB access. Staging validation remains pending and separate. Review Queue, operational booking status, pricing, and margin formulas were not changed.
+
+## Website public API hardening — 2026-10-16
+
+- Local backend safeguards and tests are documented in `docs/WEBSITE_PUBLIC_API_HARDENING.md`: bounded bodies, configurable process-local limits, field caps, DB timeouts, sanitized security events, and idempotency regression coverage.
+- Website integration remains disabled in staging and production. No staging, production, or database was contacted.
+- Public exposure is still gated on proxy-enforced distributed/client-aware limits and timeouts, monitoring/alert ownership, and approval of retention periods. No cleanup ran.

@@ -7,9 +7,10 @@ financial state remain owned by ThaiCulture Manager.
 
 import hashlib
 import json
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
@@ -25,6 +26,14 @@ from app.pricing_policy import POLICY_VERSION, PricingPolicyInputError, calculat
 router = APIRouter(prefix="/api/website", tags=["Website integration"])
 QUOTE_TTL = timedelta(minutes=30)
 SUPPORTED_CURRENCIES = frozenset({"THB", "EUR", "USD"})
+logger = logging.getLogger("app.website")
+
+
+def _website_connection():
+    return get_connection(
+        connect_timeout=settings.website_db_connect_timeout_seconds,
+        statement_timeout_ms=settings.website_db_statement_timeout_ms,
+    )
 
 
 class WebsitePricingRequest(BaseModel):
@@ -32,7 +41,7 @@ class WebsitePricingRequest(BaseModel):
     date: date
     adults: int = Field(ge=0, le=30)
     children: int = Field(default=0, ge=0, le=30)
-    extras: list[str] = Field(default_factory=list, max_length=20)
+    extras: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=20)
     currency: str = Field(min_length=3, max_length=3)
 
     @model_validator(mode="after")
@@ -50,7 +59,7 @@ class WebsitePricingRequest(BaseModel):
 
 class WebsiteCustomer(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    email: EmailStr
+    email: EmailStr = Field(max_length=254)
     phone: str = Field(min_length=1, max_length=50)
 
 
@@ -59,7 +68,7 @@ class WebsiteBookingRequest(BaseModel):
     date: date
     adults: int = Field(ge=0, le=30)
     children: int = Field(default=0, ge=0, le=30)
-    extras: list[str] = Field(default_factory=list, max_length=20)
+    extras: list[Annotated[str, Field(max_length=100)]] = Field(default_factory=list, max_length=20)
     currency: str = Field(min_length=3, max_length=3)
     customer: WebsiteCustomer
     notes: str = Field(default="", max_length=2000)
@@ -187,7 +196,7 @@ def _calculate_public_price(conditions: dict, calculation: dict, request: Websit
 @router.get("/catalog")
 def public_catalog():
     _ensure_enabled()
-    with get_connection() as conn, conn.cursor() as cur:
+    with _website_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
             SELECT t.tour_code, t.name, t.website_url,
@@ -228,7 +237,7 @@ def create_website_price_preview(request: WebsitePricingRequest):
     _ensure_enabled()
     quote_id = uuid4()
     expires_at = datetime.now(timezone.utc) + QUOTE_TTL
-    with get_connection() as conn, conn.cursor() as cur:
+    with _website_connection() as conn, conn.cursor() as cur:
         tour_id, tour_code, tour_name, website_url, rule_name, conditions, calculation = _find_public_rule(cur, request.website_tour_id)
         total, total_cost, minimum_gross, breakdown = _calculate_public_price(conditions, calculation, request)
         cur.execute(
@@ -287,7 +296,7 @@ def create_website_booking(
     payload_hash = _canonical_payload_hash(normalized)
     now = datetime.now(timezone.utc)
 
-    with get_connection() as conn, conn.cursor() as cur:
+    with _website_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO website_booking_idempotency (idempotency_key, payload_hash)
@@ -310,8 +319,10 @@ def create_website_booking(
             )
             existing_hash, response_payload = cur.fetchone()
             if existing_hash != payload_hash:
+                logger.warning("website_public_event event=idempotency_conflict route=bookings status=409")
                 raise HTTPException(status_code=409, detail="Idempotency-Key was already used with a different request")
             if response_payload is None:
+                logger.warning("website_public_event event=idempotency_in_progress route=bookings status=409")
                 raise HTTPException(status_code=409, detail="The original booking request is still being processed")
             response_payload = dict(response_payload)
             response_payload["replayed"] = True

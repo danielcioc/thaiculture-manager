@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import parse_cors_origins, settings
 from app.database import get_connection
+from app.website_security import WebsiteProtectionMiddleware, website_rate_limits
 from app.routers import (
     bookings,
     customers,
@@ -25,6 +26,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.add_middleware(
+    WebsiteProtectionMiddleware,
+    enabled=settings.website_integration_enabled,
+    body_limit_bytes=settings.website_max_body_bytes,
+    requests_per_minute=website_rate_limits(settings),
 )
 
 app.include_router(bookings.router)

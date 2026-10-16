@@ -283,3 +283,10 @@
 - Backend website contract tests: 7 passed; pricing policy tests: 5 passed. `compileall`, frontend build, lint, and `git diff --check` passed. Frontend test command is `node --test`; `--run` is not supported by Node's built-in runner and was not used.
 - HTTP/browser integration passed against loopback: Manager quote returned 11,500 THB for the configured four-person fixed group rule; a real browser submission created `Inquiry` with no payment/proforma; identical retry replayed the booking; same key with changed payload returned 409; unconfigured extras returned 422; booking detail confirmed `source=Website`, `status=Inquiry`, and zero payments. No JWT, production credential, or staging credential was required or used for public inquiry flow.
 - The existing Manager frontend suite passed 16/16, build and lint passed, `compileall` and `git diff --check` passed. The static website source was not changed. No commit or push was made; leave the isolated local E2E environment running for manual review.
+
+## 2026-10-16 Website public API hardening preparation
+
+- Added configurable backend safeguards for website API traffic: 16 KiB default request body cap, per-route process-local limits, `429` with `Retry-After`, field/count caps, PostgreSQL connect and statement timeouts, and sanitized rejection/conflict/backend-error logs. Existing idempotency behavior remains unchanged.
+- Added tests for body cap, oversized fields/extras, rate limiting, safe logs, DB timeout arguments, and replay of an existing idempotency record.
+- Documented monitoring and alert proposals, retention periods requiring approval, and a controlled future cleanup process. No records were deleted.
+- Verification: backend suite 95 discovered, 65 passed and 30 database integration tests skipped because no disposable DB was configured; staging tooling 16/16; website hardening and contract tests 16/16; frontend 16/16; build, lint, compileall, and `git diff --check` passed. A Vite test emitted a sandbox WebSocket `EPERM` warning, but all tests passed. No staging, production, or database was accessed. No commit or push was made.
