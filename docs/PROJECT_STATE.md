@@ -138,3 +138,10 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - Payments supports server-side status filtering and sorting by paid or due date. A summary endpoint returns status counts and collected totals per payment currency. Collected totals include only positive same-currency paid/partiallypaid records; cancelled, draft, invalid, and mismatched records are excluded. Mismatches are explicitly flagged.
 - Booking Detail now displays pending amount and explains an unconfigured deposit; mismatched payment rows are visibly marked and remain excluded by backend aggregation.
 - No schema migration, operational database access, Review Queue change, booking-status change, pricing change, or operational-margin formula change was made. Staging remains a separate pending task.
+
+## End-to-End V1 Release Validation — 2026-10-16
+
+- Added explicit OpenAPI response models for Dashboard summary, Payments list/summary, Bookings list/full detail, and importer-review decision. Financial fields (status, total, deposit, paid, pending, balance, currency KPIs/outstanding) are documented. Extra legacy response fields remain allowed, and unset optional fields are excluded so the API does not acquire synthetic nulls.
+- Documented relevant HTTP error responses for payment creation, booking full detail, and importer-review decision, including 400, 401, 403, 404, 409, and 422 where applicable. The review queue remains the existing read-only filtered `GET /bookings` route.
+- Validation passed: 64 backend financial/API/auth/visibility/pricing/audit/approval/OpenAPI tests; frontend tests 16/16; frontend build and lint; Python compileall. The disposable PostgreSQL container was isolated from the local application stack and removed after testing.
+- No financial formulas, Review Queue business behavior, frontend code, or operational DB data were changed. Staging remains pending operator provisioning and was not started.

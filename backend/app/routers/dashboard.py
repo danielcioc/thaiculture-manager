@@ -1,11 +1,16 @@
 from fastapi import APIRouter
 from app.database import get_connection
 from app.financials import PAYMENT_TOTALS_SQL, dashboard_financial_kpis
+from app.response_models import DashboardSummaryResponse
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-@router.get("/summary")
+@router.get(
+    "/summary",
+    response_model=DashboardSummaryResponse,
+    response_model_exclude_unset=True,
+)
 def dashboard_summary():
     with get_connection() as conn:
         with conn.cursor() as cur:

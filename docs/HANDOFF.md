@@ -2,6 +2,8 @@
 
 ## Current task status
 
+End-to-End V1 release validation is complete locally. OpenAPI now documents the financial response fields and relevant error codes for the Dashboard, Payments, Bookings, and importer-review approval contracts. The selected backend suite passed 64/64; frontend tests passed 16/16; build, lint, compileall, and `git diff --check` passed. The temporary PostgreSQL test resources were removed. No operational database was accessed. Staging remains a separate pending task and was not started.
+
 Importer-review approval UI now includes client-side mapping/review/booking-status filters, local sorting and pagination, a pending-review count, and distinct stale/request-id conflict feedback. Frontend tests, build, and lint pass. Isolated staging tooling is published; staging validation remains pending `.env.staging` provisioning. Do not start Compose until the secret-safe preflight returns READY.
 
 Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd`, resolver-unification commit `fb62159`, importer metadata migration commit `3738923`, read-only visibility commit `6bf68a2`, approval design commit `fab5417`, auth foundation commit `e2a39bb`, and audit migration commit `c0ecf45` are published on `origin/main`.

@@ -264,3 +264,12 @@
 - Payments now supports server-side filtering across canonical statuses and sorting by paid/due date. Backend summary supplies collected totals by currency and counts; cancelled/draft and currency-mismatched amounts are excluded. Currency mismatches are explicitly visible.
 - Isolated PostgreSQL: financial contract suite passed 19/19; auth 10/10, review visibility 1/1, and pricing policy 5/5 passed. Frontend tests passed 16/16, including rendered Payments and Booking Detail loading, empty, error, status, and currency-mismatch states; build, lint, compileall, and `git diff --check` passed.
 - No operational database was accessed, no schema migration was needed, and no changes were made to Review Queue, booking operational status, pricing, or margin formulas. Staging validation remains separate and pending operator provisioning.
+
+## 2026-10-16 End-to-End V1 Release Validation
+
+- Audited OpenAPI for `/dashboard/summary`, `/payments`, `/payments/summary`, booking list, full booking detail, importer review queue, and importer review decision. The routes existed, but the success responses had no generated field schemas and error responses were largely undocumented.
+- Added response models documenting financial API fields, while allowing legacy extra fields and excluding unset optional values to preserve payload shape. Added OpenAPI error descriptions for applicable 400/401/403/404/409/422 responses.
+- Backend validation: 64 passed across financial/API, OpenAPI, auth, booking visibility, pricing, audit, and approval. Cases include no payments, deposit paid, partial/full paid, overdue, cancelled/draft exclusions, currency mismatch/multiple currencies, outstanding KPI, approval retry/conflict/stale behavior, and existing Review Queue filter/pagination tests.
+- Frontend: 16 tests passed; production build and lint passed. Python compileall and `git diff --check` passed.
+- Used a disposable PostgreSQL container with its own project, port, volume, and network; removed those resources after tests. Did not connect to or modify the operational database. Did not start staging.
+- No financial formulas or Review Queue business behavior changed. The local DOCX `Transcriere_retete_din_imagine.docx` was not modified or included.

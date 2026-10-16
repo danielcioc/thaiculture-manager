@@ -34,6 +34,12 @@ Local staging tooling is isolated under `docker-compose.staging.yml` and `script
 
 The approval endpoint is not ready for operational use until the additive audit migration and trusted JWT configuration are provisioned and verified in the intended environment. The endpoint has no login/token issuance flow in the application.
 
+## End-to-End V1 release validation — 2026-10-16
+
+- OpenAPI now documents financial response properties for dashboard summary, payment list/summary, booking list/full detail, and approval decision. Route-specific HTTP errors are declared; the queue continues to use `GET /bookings?needs_manual_review=...`.
+- 64 selected backend tests, 16 frontend tests, frontend build/lint, compileall, and `git diff --check` passed. A disposable PostgreSQL test stack was removed. No operational database was accessed.
+- Remaining environment-dependent item: staging validation. Do not treat this isolated release validation as a staging or production smoke test.
+
 Use `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md` for the complete operator release procedure. The prior disposable PostgreSQL validation passed 32/32 approval, audit, auth, and visibility tests and its resources were removed. This new isolated staging stack has not been started because `.env.staging` is empty. Provision its dedicated settings, run the preflight, and then follow the backup, migration, smoke-test, and cleanup sequence. This repository does not track applied migration versions; do not infer DB state from migration filenames. No operational DB was accessed.
 
 ## Existing catalog-ingestion safeguards

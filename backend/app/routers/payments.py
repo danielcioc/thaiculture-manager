@@ -7,6 +7,12 @@ from datetime import datetime
 
 from app.database import get_connection
 from app.financials import normalize_payment_status, payment_status_for_response
+from app.response_models import (
+    API_ERROR_RESPONSES,
+    PaymentListResponse,
+    PaymentResponse,
+    PaymentsSummaryResponse,
+)
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -59,7 +65,12 @@ def _payment_response(row, columns):
     return item
 
 
-@router.get("")
+@router.get(
+    "",
+    response_model=PaymentListResponse,
+    response_model_exclude_unset=True,
+    responses={422: API_ERROR_RESPONSES[422]},
+)
 def list_payments(
     status: Optional[str] = None,
     sort_by: Literal["paid_at", "due_at"] = "paid_at",
@@ -107,7 +118,11 @@ def list_payments(
     }
 
 
-@router.get("/summary")
+@router.get(
+    "/summary",
+    response_model=PaymentsSummaryResponse,
+    response_model_exclude_unset=True,
+)
 def payments_summary():
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -137,7 +152,12 @@ def payments_summary():
     return {"currencies": [dict(zip(columns, row)) for row in rows]}
 
 
-@router.post("")
+@router.post(
+    "",
+    response_model=PaymentResponse,
+    response_model_exclude_unset=True,
+    responses={code: detail for code, detail in API_ERROR_RESPONSES.items() if code in {400, 404, 422}},
+)
 def create_payment(payload: PaymentCreate):
     with get_connection() as conn:
         with conn.cursor() as cur:

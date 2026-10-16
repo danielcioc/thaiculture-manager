@@ -434,6 +434,28 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         self.assertFalse(mismatch["currency_matches_booking"])
         self.assertEqual(mismatch["financial_error"], "currency_mismatch")
 
+    def test_v1_financial_response_models_accept_existing_route_payloads(self):
+        from app.response_models import (
+            BookingFullDetailResponse,
+            BookingListResponse,
+            DashboardSummaryResponse,
+            PaymentListResponse,
+            PaymentsSummaryResponse,
+        )
+        from app.routers import bookings, dashboard, payments
+
+        DashboardSummaryResponse.model_validate(dashboard.dashboard_summary())
+        PaymentListResponse.model_validate(payments.list_payments())
+        PaymentsSummaryResponse.model_validate(payments.payments_summary())
+        BookingListResponse.model_validate(bookings.list_bookings())
+        full_detail = bookings.get_booking_full_detail(self.booking_code)
+        validated = BookingFullDetailResponse.model_validate(full_detail)
+        self.assertEqual(validated.payment_summary.booking_financial_status, "unpaid")
+        self.assertEqual(
+            validated.model_dump(exclude_unset=True)["booking"]["status"],
+            full_detail["booking"]["status"],
+        )
+
     def test_invalid_payment_amount_and_field_lengths_do_not_insert(self):
         payload = {
             "booking_id": str(self.booking_id),

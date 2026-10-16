@@ -9,6 +9,12 @@ from app.audit import AuditIdempotencyConflict, run_idempotent_audit_event
 from app.auth import CurrentUser, require_permission
 from app.database import get_connection
 from app.financials import PAYMENT_TOTALS_SQL, booking_financial_summary, payment_status_for_response
+from app.response_models import (
+    API_ERROR_RESPONSES,
+    BookingFullDetailResponse,
+    BookingListResponse,
+    ImportReviewDecisionResponse,
+)
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -88,7 +94,7 @@ def _valid_review_state(mapping_status, tour_id, needs_manual_review):
     )
 
 
-@router.get("")
+@router.get("", response_model=BookingListResponse, response_model_exclude_unset=True)
 def list_bookings(needs_manual_review: Optional[bool] = None):
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -592,7 +598,12 @@ def get_booking_operations_summary(booking_code: str):
     }
 
 
-@router.get("/{booking_code}/full")
+@router.get(
+    "/{booking_code}/full",
+    response_model=BookingFullDetailResponse,
+    response_model_exclude_unset=True,
+    responses={404: API_ERROR_RESPONSES[404]},
+)
 def get_booking_full_detail(booking_code: str):
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -933,7 +944,12 @@ def get_booking_full_detail(booking_code: str):
             }
 
 
-@router.post("/{booking_code}/import-review/decision")
+@router.post(
+    "/{booking_code}/import-review/decision",
+    response_model=ImportReviewDecisionResponse,
+    response_model_exclude_unset=True,
+    responses={code: detail for code, detail in API_ERROR_RESPONSES.items() if code in {400, 401, 403, 404, 409, 422}},
+)
 def decide_import_review(
     booking_code: str,
     payload: ImportReviewDecision,
