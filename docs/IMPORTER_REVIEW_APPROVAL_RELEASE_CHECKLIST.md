@@ -90,3 +90,13 @@ The previously exposed credential-like value is considered compromised. The oper
 - The approval endpoint has no explicit FastAPI `response_model`; its current JSON response contract is documented above. HTTP behavior is implemented with explicit FastAPI exceptions plus standard request validation.
 - `backend/tests/test_import_review_approval.py` covers confirmed approval, a review mapping with null `tour_id`, stale update, identical retry, changed-payload conflict, audit rollback, and permission/authentication outcomes. PostgreSQL endpoint tests require a disposable local test URL and are skipped if a safe isolated URL is not configured.
 - Migration files are discoverable by filename, but the repository has no automatic migration head/applied-state tracking. Operational schema state remains unverified until an authorized operator inspects the target DB.
+
+## Isolated staging validation (2026-10-16)
+
+- Started a dedicated PostgreSQL 16 Compose project on localhost port `55441`, with its own named volume and network. Applied `database/init/001_schema.sql`, then the importer-review metadata migration and audit idempotency migration to the isolated test databases only.
+- Verified all three booking metadata fields and all five audit idempotency/actor/reason fields exist and are nullable. Verified the partial unique index `uq_audit_log_user_request_id` on `(user_id, request_id)` where `request_id IS NOT NULL`.
+- Created a custom-format PostgreSQL backup before running mutable tests; `pg_restore --list` successfully read its archive catalog.
+- Tests passed: 14 approval PostgreSQL tests, 7 audit helper tests (including PostgreSQL transaction/idempotency tests), 10 auth tests, and 1 booking visibility test. Total: 32 passed, 0 failed, 0 skipped.
+- The approval test suite exercised missing/invalid tokens, invalid issuer/audience, missing permission, valid approval, missing booking, missing/inactive tour, stale state, identical and concurrent retry, changed payload conflict, and audit failure rollback. It verified the raw label and operational booking status remained unchanged and update/audit writes were atomic.
+- The five operator settings were absent from the current process environment. This check did not inspect an external secret manager. No operator credentials were used.
+- Removed the staging container, named volume, network, backup, and temporary Compose file. No operational database or existing application stack was accessed.

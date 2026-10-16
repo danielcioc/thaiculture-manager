@@ -218,3 +218,12 @@
 - No backend/frontend logic, migration SQL, or live data changed.
 - No operational database was accessed, no migration was applied, and Compose was not started.
 - Operator-owned deployment steps remain pending; see `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md`.
+
+## 2026-10-16 isolated approval staging validation
+
+- Started PostgreSQL 16 in a dedicated Compose project using a dedicated localhost port, volume, and network. Applied the versioned initial schema and both additive importer-review/audit migrations only in that isolated environment.
+- Verified the expected booking review and audit idempotency columns are nullable and verified the partial unique audit index definition.
+- Took a custom-format backup before mutable tests and validated the archive with `pg_restore --list`.
+- Passed 14 approval tests, 7 audit helper tests, 10 auth tests, and 1 booking visibility test (32 total; no skips/failures). Coverage included all requested auth/smoke cases, retry/conflict, stale update, audit rollback/atomicity, and preservation of raw label and booking operational status.
+- The required operator setting names were all absent from this process environment; external secret-manager state was not inspected. No actual operator credentials were used.
+- Removed the test container, volume, network, backup, and temporary Compose file. No operational database was accessed or modified.
