@@ -273,3 +273,13 @@
 - Frontend: 16 tests passed; production build and lint passed. Python compileall and `git diff --check` passed.
 - Used a disposable PostgreSQL container with its own project, port, volume, and network; removed those resources after tests. Did not connect to or modify the operational database. Did not start staging.
 - No financial formulas or Review Queue business behavior changed. The local DOCX `Transcriere_retete_din_imagine.docx` was not modified or included.
+
+## 2026-10-16 Website to Manager Integration V1 — local E2E
+
+- Added an opt-in `GET /api/website/catalog`, `POST /api/website/pricing`, and `POST /api/website/bookings` flow. Pricing comes from the active approved Manager rule. Requests reject unconfigured extras and create `Inquiry` bookings; no payment, proforma, or confirmation is generated.
+- Added an additive migration for quote preview snapshots and idempotency responses. Applied it only in the isolated `thaiculture-local-website-e2e` database after the base schema and existing canonical/pricing seeds. The operational database and staging were not accessed.
+- Added a local loopback adapter and injected widget for the Ayutthaya 5 Sights page. The website source directory is served read-only and was not modified. The local stack remains running for Daniel's manual browser review.
+- Fixed the demo's guest-count default to fit the selected fixed group rule, normalized validation error messages, and aligned money quantization with `ROUND_HALF_UP`.
+- Backend website contract tests: 7 passed; pricing policy tests: 5 passed. `compileall`, frontend build, lint, and `git diff --check` passed. Frontend test command is `node --test`; `--run` is not supported by Node's built-in runner and was not used.
+- HTTP/browser integration passed against loopback: Manager quote returned 11,500 THB for the configured four-person fixed group rule; a real browser submission created `Inquiry` with no payment/proforma; identical retry replayed the booking; same key with changed payload returned 409; unconfigured extras returned 422; booking detail confirmed `source=Website`, `status=Inquiry`, and zero payments. No JWT, production credential, or staging credential was required or used for public inquiry flow.
+- The existing Manager frontend suite passed 16/16, build and lint passed, `compileall` and `git diff --check` passed. The static website source was not changed. No commit or push was made; leave the isolated local E2E environment running for manual review.

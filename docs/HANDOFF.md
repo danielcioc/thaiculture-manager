@@ -2,6 +2,8 @@
 
 ## Current task status
 
+Website-to-Manager V1 is implemented locally behind `WEBSITE_INTEGRATION_ENABLED` (default false). The integration exposes a limited public catalog, Manager-calculated quote previews, and idempotent inquiry submission. A loopback-only adapter serves the unchanged static website and injects the local demo form. The isolated local E2E stack is intentionally kept running for Daniel's manual review; it is not staging or production. See `docs/WEBSITE_TO_MANAGER_INTEGRATION_V1.md`.
+
 End-to-End V1 release validation is complete locally. OpenAPI now documents the financial response fields and relevant error codes for the Dashboard, Payments, Bookings, and importer-review approval contracts. The selected backend suite passed 64/64; frontend tests passed 16/16; build, lint, compileall, and `git diff --check` passed. The temporary PostgreSQL test resources were removed. No operational database was accessed. Staging remains a separate pending task and was not started.
 
 Importer-review approval UI now includes client-side mapping/review/booking-status filters, local sorting and pagination, a pending-review count, and distinct stale/request-id conflict feedback. Frontend tests, build, and lint pass. Isolated staging tooling is published; staging validation remains pending `.env.staging` provisioning. Do not start Compose until the secret-safe preflight returns READY.

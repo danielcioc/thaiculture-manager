@@ -69,6 +69,13 @@ After any catalog-ingestion or importer-mapping change, verify:
 
 These are existing project questions, not decisions made by the pricing or financial-contract tasks.
 
+## Website integration V1 — local validation
+
+- A local-only adapter and opt-in Manager API now support Manager-priced quote previews and `Inquiry` submissions with idempotency. See `docs/WEBSITE_TO_MANAGER_INTEGRATION_V1.md`.
+- The current E2E environment uses its own Compose project, database, volume, network, and ports. Keep it available for manual review until Daniel confirms completion.
+- Do not expose `WEBSITE_INTEGRATION_ENABLED` publicly until release/security review addresses abuse controls, monitoring, inquiry-data retention, and operational provisioning.
+- Pricing remains sourced from active approved Manager rules. Extras without configured prices are rejected. No adult/child tariff split, payment collection, proforma generation, or booking confirmation is inferred.
+
 ## Booking Financial Workflow V1.1 — 2026-10-16
 
 - V1.1 aligns payment statuses and booking financial derivation and displays total, optional deposit, paid, balance, and financial status in Booking Detail.

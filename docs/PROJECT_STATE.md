@@ -139,6 +139,14 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - Booking Detail now displays pending amount and explains an unconfigured deposit; mismatched payment rows are visibly marked and remain excluded by backend aggregation.
 - No schema migration, operational database access, Review Queue change, booking-status change, pricing change, or operational-margin formula change was made. Staging remains a separate pending task.
 
+## Website to Manager Integration V1 — 2026-10-16
+
+- Added an opt-in public website API for approved Manager catalog entries, Manager-derived quote previews, and idempotent website inquiry submissions. `WEBSITE_INTEGRATION_ENABLED` defaults to false.
+- Quote pricing uses the active approved Manager pricing rule, including its VAT and `group_size_basis`; unconfigured extras, missing/invalid VAT, unsupported guest counts, and currency mismatches are rejected.
+- Website requests create `Inquiry` bookings and a pricing quote snapshot. They do not confirm tours, take payments, or generate proformas. The static website files remain unchanged; a loopback-only local adapter injects the demo widget and proxies a narrow API allowlist.
+- A dedicated additive migration stores expiring quote previews and idempotency responses. It was applied only to the isolated local E2E database; no operational or staging database was accessed.
+- Isolated HTTP and browser validation passed: catalog, Manager quote, Inquiry submission, idempotent replay, changed-payload 409, extra rejection, booking detail, no payments, and no proforma. The backend and PostgreSQL are healthy. Keep the E2E Compose project available for Daniel's manual review; staging validation remains separate.
+
 ## End-to-End V1 Release Validation — 2026-10-16
 
 - Added explicit OpenAPI response models for Dashboard summary, Payments list/summary, Bookings list/full detail, and importer-review decision. Financial fields (status, total, deposit, paid, pending, balance, currency KPIs/outstanding) are documented. Extra legacy response fields remain allowed, and unset optional fields are excluded so the API does not acquire synthetic nulls.

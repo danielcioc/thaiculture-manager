@@ -7,6 +7,7 @@ from app.routers import (
     payments,
     dashboard,
     tours,
+    website,
     locations,
     guides,
     drivers,
@@ -41,6 +42,7 @@ app.include_router(drivers.router)
 app.include_router(assignments.router)
 app.include_router(invoices.router)
 app.include_router(pricing.router)
+app.include_router(website.router)
 
 
 @app.get("/health")
