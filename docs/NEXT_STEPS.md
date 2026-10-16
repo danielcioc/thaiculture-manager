@@ -24,11 +24,15 @@ Last updated: 2026-10-16
 - The operational database was not modified during financial-contract work.
 - Database counts below are the last recorded snapshot from 2026-10-13 and were not re-queried for this checkpoint.
 
-## Immediate next priority: review endpoint deployment readiness
+## Immediate next priority: isolated staging validation
 
-Before using importer review approval operationally, separately authorize and apply the validated additive audit-log migration, provision the trusted `AUTH_JWT_SECRET`, `AUTH_JWT_ISSUER`, and `AUTH_JWT_AUDIENCE`, and verify `DATABASE_URL` in the target deployment. The endpoint has no frontend approval action yet. Review placeholder-like local DB URL fallbacks in import scripts as a separate configuration task; do not rely on them for operational access. Preserve raw source values, use the canonical resolver, and keep ambiguous or unmapped records visible for review. Defer website integration until the broader internal model is aligned.
+The read-only importer review visibility milestone now has a dedicated Review Queue UI with an explicit approval form wired to `POST /bookings/{booking_code}/import-review/decision`. Approval requires a bearer token, active canonical tour, reason, and explicit confirmation; the token is kept in component memory only. A 409 requires reloading before another decision; transport failures retain the request ID so the same request can be retried idempotently.
 
-Use `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md` for the complete release procedure. Isolated staging validation passed 32/32 approval, audit, auth, and visibility tests; the test container, volume, network, and backup were removed. Before operational enablement, an authorized operator still needs to inspect/apply the two migrations in the target schema, provision and verify trusted JWT settings plus `DATABASE_URL` and the Compose-only DB password, confirm the reviewer permission, and use the approved backup/change process. This repository does not track applied migration versions; do not infer DB state from migration filenames. No operational DB was accessed.
+Local staging tooling is isolated under `docker-compose.staging.yml` and `scripts/staging/`. The Compose project, containers, network, volume, and localhost ports have dedicated names. Preflight rejects missing settings and any database URL that does not point to the fixed isolated PostgreSQL service/database. Staging validation is pending operator provisioning of `.env.staging` only; the file must remain untracked and secret values must never be printed. Use preflight first, then the documented backup, migration verifier, tests/smoke runner, and cleanup scripts. Do not connect to the operational database.
+
+The approval endpoint is not ready for operational use until the additive audit migration and trusted JWT configuration are provisioned and verified in the intended environment. The endpoint has no login/token issuance flow in the application.
+
+Use `docs/IMPORTER_REVIEW_APPROVAL_RELEASE_CHECKLIST.md` for the complete operator release procedure. The prior disposable PostgreSQL validation passed 32/32 approval, audit, auth, and visibility tests and its resources were removed. This new isolated staging stack has not been started because `.env.staging` is empty. Provision its dedicated settings, run the preflight, and then follow the backup, migration, smoke-test, and cleanup sequence. This repository does not track applied migration versions; do not infer DB state from migration filenames. No operational DB was accessed.
 
 ## Existing catalog-ingestion safeguards
 

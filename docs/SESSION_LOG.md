@@ -227,3 +227,14 @@
 - Passed 14 approval tests, 7 audit helper tests, 10 auth tests, and 1 booking visibility test (32 total; no skips/failures). Coverage included all requested auth/smoke cases, retry/conflict, stale update, audit rollback/atomicity, and preservation of raw label and booking operational status.
 - The required operator setting names were all absent from this process environment; external secret-manager state was not inspected. No actual operator credentials were used.
 - Removed the test container, volume, network, backup, and temporary Compose file. No operational database was accessed or modified.
+
+## 2026-10-16 review approval UI and isolated staging tooling
+
+- Added a Review Queue navigation view that lists bookings flagged for manual mapping review, displays the imported raw tour label, mapping status, booking status, current canonical tour, and active canonical tour candidates.
+- Added an approval form with required active-tour selection, required reason, explicit confirmation, reviewer bearer token held only in component memory, and a request ID retained across retryable transport failures. HTTP 403 and 409 receive dedicated feedback; 409 disables a repeat decision until the queue is reloaded.
+- Added API mock tests for successful approval, permission denied, stale update, and idempotency payload conflict. All four frontend API tests passed; frontend production build and lint passed.
+- Added isolated-tool preflight tests for missing settings, wrong database target, explicit resource names, and safe resource resolution (4/4 passed). `compileall` and `git diff --check` passed.
+- Added a separate staging Compose file and secret-safe scripts for preflight, isolated startup, custom-format backup/restore-list verification, migration/index verification, test/smoke execution, and label-scoped cleanup. The scripts never print environment values and reject missing settings before invoking Docker operations.
+- Backend auth (10) and booking visibility (1) tests passed. Audit payload unit tests passed (2); five PostgreSQL audit tests and all 14 PostgreSQL approval tests were skipped because no isolated test database was configured. The four staging preflight tests passed. A backend test attempt without a test-only `DATABASE_URL` first failed during settings import; a synthetic unreachable test-only settings URL was then used to run non-database tests. No database connection was attempted.
+- Secret-safe staging preflight reports BLOCKED because all five required keys are absent from the empty `.env.staging`; it returned before invoking Docker. Compose was not started; no database was accessed.
+- No booking status, raw label, financial logic, payment behavior, mapping resolver, or operational database data was changed.

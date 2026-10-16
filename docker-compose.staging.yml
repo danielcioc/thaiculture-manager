@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: thaiculture-staging-approval-postgres
+    restart: unless-stopped
+    labels: &staging_labels
+      com.thaiculture.project: thaiculture-staging-approval
+      com.thaiculture.environment: staging
+      com.thaiculture.managed-by: staging-tools
+    environment:
+      POSTGRES_DB: thaiculture_manager_staging_test
+      POSTGRES_USER: tct_admin
+      POSTGRES_PASSWORD: ${THAICULTURE_DB_PASSWORD:?Set THAICULTURE_DB_PASSWORD in .env.staging}
+    ports:
+      - "127.0.0.1:55441:5432"
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/migrations:/staging-migrations:ro
+    networks:
+      - staging_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tct_admin -d thaiculture_manager_staging_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build:
+      context: ./backend
+    container_name: thaiculture-staging-approval-backend
+    restart: unless-stopped
+    labels: *staging_labels
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to the isolated staging PostgreSQL service}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set AUTH_JWT_SECRET in .env.staging}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:?Set AUTH_JWT_ISSUER in .env.staging}
+      AUTH_JWT_AUDIENCE: ${AUTH_JWT_AUDIENCE:?Set AUTH_JWT_AUDIENCE in .env.staging}
+    ports:
+      - "127.0.0.1:18080:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - staging_net
+
+volumes:
+  staging_postgres_data:
+    name: thaiculture-staging-approval-postgres-data
+    labels:
+      com.thaiculture.project: thaiculture-staging-approval
+      com.thaiculture.environment: staging
+      com.thaiculture.managed-by: staging-tools
+
+networks:
+  staging_net:
+    name: thaiculture-staging-approval-network
+    labels:
+      com.thaiculture.project: thaiculture-staging-approval
+      com.thaiculture.environment: staging
+      com.thaiculture.managed-by: staging-tools

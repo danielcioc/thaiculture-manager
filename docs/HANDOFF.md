@@ -2,13 +2,15 @@
 
 ## Current task status
 
+Importer-review approval UI and isolated staging tooling are implemented locally. Staging remains blocked only on operator provisioning of `.env.staging`; do not start Compose until the secret-safe preflight returns READY.
+
 Pricing policy v1 and booking financial contract v1 are implemented. Financial-contract commit `d728cfd`, resolver-unification commit `fb62159`, importer metadata migration commit `3738923`, read-only visibility commit `6bf68a2`, approval design commit `fab5417`, auth foundation commit `e2a39bb`, and audit migration commit `c0ecf45` are published on `origin/main`.
 
 ## Last confirmed state
 
 - **2026-10-16 importer review approval endpoint:** `POST /bookings/{booking_code}/import-review/decision` uses the existing JWT identity and requires `bookings.import_review.approve`. It locks the booking, checks expected mapping fields, allows only documented transitions, requires an existing active canonical tour for `confirmed`, preserves the raw source label and operational booking status, and writes the mapping plus audit event in one caller-owned transaction. Identical retries replay the event; a different payload under the same actor/request ID returns 409. Fourteen isolated PostgreSQL endpoint tests passed, along with auth and booking visibility tests. The temporary PostgreSQL container, volume, network, and fixture were removed. The operational database and published migration were not touched.
 - **2026-10-16 isolated staging validation:** Applied the base schema and both additive importer-review/audit migrations to a disposable PostgreSQL 16 environment only. Schema/index verification passed; a pre-test custom-format backup was readable. Approval (14), audit (7), auth (10), and visibility (1) tests passed: 32/32, no skips. Tests covered auth/permission failures, valid approval, missing booking, inactive tour, stale state, retries/conflict, audit rollback, atomicity, and preservation of raw label and operational booking status. The container, volume, network, backup, and temporary Compose file were removed. No operational DB was accessed. The five operator settings were missing from this process environment; external secret-manager state was not checked.
-- The endpoint is not ready for operational use until the additive audit migration is separately applied and trusted JWT settings are provisioned. `Settings` still permits JWT fields to be absent at startup; protected requests fail closed when they are absent. No frontend approval action was added.
+- The endpoint is not ready for operational use until the additive audit migration is separately applied and trusted JWT settings are provisioned. `Settings` still permits JWT fields to be absent at startup; protected requests fail closed when they are absent. The Review Queue frontend action is now implemented locally and awaits staging validation.
 - Existing import-script DB URL fallbacks look placeholder-like/local, but may be used if `DATABASE_URL` is absent. Values were not displayed. This configuration cleanup is separate; Git history was not rewritten.
 
 - `d728cfd fix(financials): repair payment and invoice contract aggregation` is published on `origin/main`.
@@ -61,7 +63,9 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 
 ## Recommended next task
 
-Before operational use of importer-review approval, separately authorize and apply the isolated-validated audit migration, provision the trusted JWT secret/issuer/audience, and verify `DATABASE_URL` in the target environment. The endpoint has no frontend approval action yet. Review placeholder-like local DB URL fallbacks in import scripts as a separate configuration task; do not rely on them operationally. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
+Provision the dedicated local staging settings in `.env.staging`, then run `python3 scripts/staging/preflight.py`. When READY, start only through `python3 scripts/staging/up.py`; take and verify a backup before applying migrations or running mutable tests. The staging scripts never print setting values and target only the isolated Compose PostgreSQL service/database. No operational database was accessed as part of this work.
+
+Before operational use of importer-review approval, separately authorize and apply the isolated-validated audit migration, provision the trusted JWT secret/issuer/audience, and verify `DATABASE_URL` in the target environment. Review placeholder-like local DB URL fallbacks in import scripts as a separate configuration task; do not rely on them operationally. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
 
 Keep the following existing questions open without assumptions: whether manual-review flags become an active review workflow, and how historical booking updates should be reapplied without delete-and-reimport. Defer website integration until the broader internal model is aligned.
 
