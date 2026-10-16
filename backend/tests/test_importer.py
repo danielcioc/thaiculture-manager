@@ -148,10 +148,8 @@ class ImporterSafetyTests(unittest.TestCase):
 
     def test_current_payment_import_inserts_row(self):
         csv_data = (
-            "invoice_no,method,account_name,account_no,bank,swift,branch,status\n"
-            "TCT-TH-2026-0206-001,Bank transfer,Pimnipa Buachum,6161212177,"
-            "Bank of Ayudhya (Krungsri),AYUDTHBK,"
-            "\"0616 Khao Ta Lo Soi Branch, Pattaya\",Pending confirmation\n"
+            "invoice_no,amount,method,status\n"
+            "TCT-TH-2026-0206-001,1250.00,Bank transfer,Pending confirmation\n"
         )
         cursor = MagicMock()
         booking_map = {
@@ -172,6 +170,22 @@ class ImporterSafetyTests(unittest.TestCase):
             if "INSERT INTO payments" in c.args[0]
         ]
         self.assertEqual(len(payment_inserts), 1)
+        self.assertEqual(payment_inserts[0].args[1][2], 1250.0)
+
+    def test_payment_without_amount_is_skipped(self):
+        csv_data = (
+            "invoice_no,method,account_name,account_no,bank,swift,branch,status\n"
+            "TCT-TH-2026-0206-001,Bank transfer,Test,000000,Test Bank,TESTXX,Branch,Pending confirmation\n"
+        )
+        cursor = MagicMock()
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "pathlib.Path.open", mock_open(read_data=csv_data)
+        ):
+            count = importer.import_payments(cursor, {})
+
+        self.assertEqual(count, 0)
+        self.assertFalse(any("INSERT INTO payments" in c.args[0] for c in cursor.execute.call_args_list))
 
 
 if __name__ == "__main__":
