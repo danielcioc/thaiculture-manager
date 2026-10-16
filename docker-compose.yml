@@ -20,6 +20,8 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://tct_admin:${THAICULTURE_DB_PASSWORD:?Set THAICULTURE_DB_PASSWORD in project .env}@postgres:5432/thaiculture_manager
+      WEBSITE_INTEGRATION_ENABLED: ${WEBSITE_INTEGRATION_ENABLED:-false}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
     ports:
       - "8000:8000"
     depends_on:

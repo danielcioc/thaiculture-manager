@@ -17,6 +17,7 @@ from common import (
     inspect_runtime_inventory,
     run_static_preflight,
 )
+from migration_contract import EXPECTED_COLUMNS, EXPECTED_INDEXES, MIGRATIONS, schema_gaps
 
 
 def compose_config(*, project=PROJECT, order=("postgres", "backend"), fixed=False):
@@ -142,6 +143,36 @@ class StagingPreflightTests(unittest.TestCase):
 
     def test_staging_compose_has_no_fixed_container_name(self):
         self.assertNotIn("container_name:", COMPOSE_FILE.read_text(encoding="utf-8"))
+
+    def test_staging_compose_configures_website_flag_and_same_origin_cors(self):
+        compose = COMPOSE_FILE.read_text(encoding="utf-8")
+        self.assertIn("WEBSITE_INTEGRATION_ENABLED: ${WEBSITE_INTEGRATION_ENABLED:-false}", compose)
+        self.assertIn("CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}", compose)
+
+    def test_migration_manifest_includes_website_quote_idempotency(self):
+        self.assertEqual(MIGRATIONS[-1].name, "20261016_add_website_quote_idempotency.sql")
+        self.assertTrue(MIGRATIONS[-1].is_file())
+        self.assertIn("website_quote_previews.id|uuid|NO", EXPECTED_COLUMNS)
+        self.assertIn("website_booking_idempotency.idempotency_key|uuid|NO", EXPECTED_COLUMNS)
+        self.assertIn("idx_website_quote_previews_expires_at", EXPECTED_INDEXES)
+
+    def test_schema_contract_detects_missing_website_column_and_index(self):
+        lines = [*EXPECTED_COLUMNS]
+        lines.extend(
+            f"INDEX|{table}|{name}|CREATE INDEX ON public.{table} {fragments[0]} {fragments[1]}"
+            for name, (table, *fragments) in EXPECTED_INDEXES.items()
+        )
+        missing_columns, missing_indexes = schema_gaps(lines)
+        self.assertEqual(missing_columns, set())
+        self.assertEqual(missing_indexes, set())
+
+        missing_columns, missing_indexes = schema_gaps([
+            line for line in lines
+            if line != "website_quote_previews.expires_at|timestamp with time zone|NO"
+            and not line.startswith("INDEX|website_quote_previews|")
+        ])
+        self.assertIn("website_quote_previews.expires_at|timestamp with time zone|NO", missing_columns)
+        self.assertIn("idx_website_quote_previews_expires_at", missing_indexes)
 
     def test_daemon_unavailable_skips_runtime_inventory(self):
         calls = []

@@ -8,6 +8,8 @@ The local V1 integration uses the existing static website as the presentation la
 
 The integration is opt-in behind `WEBSITE_INTEGRATION_ENABLED`, which defaults to `false`. The local-only adapter in `scripts/local_website_adapter.py` serves the website from its existing directory, injects the demo form into one selected page, and proxies only the three public website API paths. It binds to loopback and forwards no authorization credentials. The static website files are not modified.
 
+For staging, the approved topology is a same-origin reverse proxy for `/api/website/*`. The static site can therefore use relative API paths without CORS. Configure `CORS_ALLOWED_ORIGINS` as empty for this route; if the Manager staff UI is served on a separate origin, configure its exact origin separately. Keep `WEBSITE_INTEGRATION_ENABLED=false` by default, and enable it only for an approved staging validation. Production remains disabled pending a separate release decision.
+
 ## API contract
 
 | Method and path | Purpose | Success |
@@ -48,6 +50,8 @@ python3 scripts/local_website_adapter.py \
 ```
 
 The backend feature flag must be enabled explicitly for local testing. Production exposure requires a separate security/release review, suitable abuse controls, monitoring, retention policy for inquiry PII, and explicit operator configuration. Never place service secrets or JWTs in public website code, Git, or browser storage.
+
+The tracked `frontend/.env.example` standardizes the Manager frontend's public API URL as `VITE_API_BASE_URL`; `VITE_API_BASE` remains a compatibility fallback. Vite variables are bundled into browser code and must contain public configuration only, never secrets. The static website widget uses same-origin relative paths and does not read either Vite variable.
 
 ## Known V1 limits
 

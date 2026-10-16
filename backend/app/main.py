@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import parse_cors_origins, settings
 from app.database import get_connection
 from app.routers import (
     bookings,
@@ -20,12 +21,7 @@ app = FastAPI(title="ThaiCulture Manager API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=parse_cors_origins(settings.cors_allowed_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

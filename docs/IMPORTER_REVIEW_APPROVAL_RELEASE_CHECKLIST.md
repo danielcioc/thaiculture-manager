@@ -22,6 +22,7 @@ This checklist prepares the protected mapping approval endpoint for deployment. 
 - The repository has two additive SQL files, ordered by their filename date:
   1. `database/migrations/20261015_add_booking_import_review_metadata.sql`
   2. `database/migrations/20261015_add_audit_log_idempotency_fields.sql`
+- The website quote snapshot/idempotency migration is `database/migrations/20261016_add_website_quote_idempotency.sql`. The staging schema verifier checks its quote snapshot and idempotency tables plus the quote expiry index; include it after the existing review, audit, and deposit migrations when validating the complete application schema.
 - The approval route reads the three importer-review columns and the audit helper writes the five audit columns/index. Verify both migrations are already present in the target schema before enabling the route.
 - There is no migration runner or schema-version ledger in this repository. A filename listing identifies available migration files, not which files have been applied. The release operator must inspect `information_schema.columns` and `pg_indexes` in the target environment and record the result in the deployment record. Do not infer migration state from this checklist.
 - Do not edit the published migrations or apply them automatically during application startup.
@@ -100,3 +101,12 @@ The previously exposed credential-like value is considered compromised. The oper
 - The approval test suite exercised missing/invalid tokens, invalid issuer/audience, missing permission, valid approval, missing booking, missing/inactive tour, stale state, identical and concurrent retry, changed payload conflict, and audit failure rollback. It verified the raw label and operational booking status remained unchanged and update/audit writes were atomic.
 - The five operator settings were absent from the current process environment. This check did not inspect an external secret manager. No operator credentials were used.
 - Removed the staging container, named volume, network, backup, and temporary Compose file. No operational database or existing application stack was accessed.
+
+## Website integration staging readiness (2026-10-16)
+
+- Provision `WEBSITE_INTEGRATION_ENABLED=false` by default. Set it to `true` only for an explicitly approved staging validation; production remains disabled until a separate release decision.
+- Staging uses a same-origin reverse proxy for `/api/website/*`. The proxy must forward those paths to the Manager backend without rewriting request bodies, response status codes, or the `Idempotency-Key` header. This path does not require cross-origin CORS.
+- Set `CORS_ALLOWED_ORIGINS` empty for same-origin website traffic. If the Manager staff UI is served from a separate origin, list only its exact trusted origins; wildcard origins are rejected.
+- Apply/verify `20261016_add_website_quote_idempotency.sql` only in the isolated staging database after the usual backup check. `scripts/staging/verify_migrations.py` verifies this migration's columns and `idx_website_quote_previews_expires_at` along with the review, audit, and deposit schema.
+- Rollback by disabling `WEBSITE_INTEGRATION_ENABLED` and removing/disabling the `/api/website/*` proxy route, then revert the application artifact if needed. Keep additive tables and submitted Inquiry records; do not drop schema or business data as an automatic rollback.
+- This is a provisioning/readiness plan only. It does not mean staging has been started or deployed.
