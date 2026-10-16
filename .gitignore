@@ -22,3 +22,5 @@ backups/
 
 # Local Compose credentials
 .env
+.env.*
+!.env.example
