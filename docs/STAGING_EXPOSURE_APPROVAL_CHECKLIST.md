@@ -4,13 +4,17 @@ Staging exposure remains **not approved** until every required field is complete
 
 ## Owners and contacts
 
-- Proxy/hosting owner: __________________________________
-- Backend owner: ________________________________________
-- Monitoring/alert owner: _______________________________
-- DBA/backup owner: _____________________________________
-- Migration owner: ______________________________________
-- Rollback/release owner: _______________________________
+- Proxy/hosting owner: Daniel Cioc
+- Backend owner: Daniel Cioc
+- Monitoring/alert owner: Daniel Cioc
+- Retention and cleanup owner: Daniel Cioc; Inquiry PII requires business/legal approval
+- DBA/backup owner: Daniel Cioc
+- Migration owner: Daniel Cioc
+- Rollback/release owner: Daniel Cioc
+- Staging exposure approval owner: Daniel Cioc
 - Alert channel: ________________________________________
+
+Because operational ownership is currently concentrated in one person, backup, migration, and rollback require an explicit independent confirmation before execution.
 
 ## Staging scope and window
 
@@ -42,7 +46,7 @@ Staging exposure remains **not approved** until every required field is complete
 - `WEBSITE_INTEGRATION_ENABLED`: **false by default**; any staging activation is limited to the approved window
 - Quote retention proposal: **30 days after expiry**
 - Idempotency retention proposal: **180 days**
-- Inquiry PII retention: ___________________________________________
+- Inquiry PII retention: Pending business/legal approval
 
 The process-local limits are defense in depth. They do not replace the distributed proxy limits entered above.
 
