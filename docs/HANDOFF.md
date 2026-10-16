@@ -6,6 +6,10 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 
 ## Last confirmed state
 
+- **2026-10-16 importer review approval endpoint:** `POST /bookings/{booking_code}/import-review/decision` uses the existing JWT identity and requires `bookings.import_review.approve`. It locks the booking, checks expected mapping fields, allows only documented transitions, requires an existing active canonical tour for `confirmed`, preserves the raw source label and operational booking status, and writes the mapping plus audit event in one caller-owned transaction. Identical retries replay the event; a different payload under the same actor/request ID returns 409. Fourteen isolated PostgreSQL endpoint tests passed, along with auth and booking visibility tests. The temporary PostgreSQL container, volume, network, and fixture were removed. The operational database and published migration were not touched.
+- The endpoint is not ready for operational use until the additive audit migration is separately applied and trusted JWT settings are provisioned. `Settings` still permits JWT fields to be absent at startup; protected requests fail closed when they are absent. No frontend approval action was added.
+- Existing import-script DB URL fallbacks look placeholder-like/local, but may be used if `DATABASE_URL` is absent. Values were not displayed. This configuration cleanup is separate; Git history was not rewritten.
+
 - `d728cfd fix(financials): repair payment and invoice contract aggregation` is published on `origin/main`.
 - The last recorded operational DB snapshot (2026-10-13) was 12 bookings, 8 customers, 3 payments, 28 tours, and 6 locations. It was not re-queried for the financial-contract task.
 - 3 real payments remain in DB.
@@ -14,9 +18,9 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 - No operational DB write was made during the pricing and financial-contract work.
 - Importer resolver unification and the phase-3 importer/schema checks did not access the operational database.
 - The read-only importer-review visibility checkpoint exposes the raw imported tour label, mapping status, review flag, and canonical tour data in booking list/detail. Missing tours display as `Needs review`; no edit or approval action is present. Backend visibility/importer tests (8), frontend build, and lint passed; no frontend test runner is configured. No database was accessed.
-- `backend/app/auth.py` validates externally issued HS256 JWTs, reloads active users and role permissions from PostgreSQL, and exposes `get_current_user` / `require_permission`. Permission JSON is a flat boolean map. Ten auth tests pass with mocked connections. No existing route was protected and no DB was accessed.
-- The importer review audit decision reuses `audit_log`. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` passed isolated PostgreSQL validation only; operational schema remains untouched. Exact actions, event payload, retention/access, and transaction rules are in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`. The transactional helper is now implemented, but no approval endpoint invokes it.
-- `backend/app/audit.py` provides canonical payload hashing and a caller-transaction audit helper. It serializes same-actor/request attempts with a transaction-scoped advisory lock, returns the existing event for an identical retry, rejects a different payload hash, and leaves commit/rollback to the caller. Seven isolated PostgreSQL/unit tests pass. No approval endpoint calls it yet.
+- `backend/app/auth.py` validates externally issued HS256 JWTs, reloads active users and role permissions from PostgreSQL, and exposes `get_current_user` / `require_permission`. Permission JSON is a flat boolean map. The importer review decision endpoint is protected by this foundation; ten auth tests pass with mocked connections.
+- The importer review audit decision reuses `audit_log`. Migration `database/migrations/20261015_add_audit_log_idempotency_fields.sql` passed isolated PostgreSQL validation only; operational schema remains untouched. Exact actions, event payload, retention/access, and transaction rules are in `docs/IMPORTER_REVIEW_APPROVAL_WORKFLOW_V1.md`. The transactional helper and protected approval endpoint are implemented locally.
+- `backend/app/audit.py` provides canonical payload hashing and a caller-transaction audit helper. It serializes same-actor/request attempts with a transaction-scoped advisory lock, returns the existing event for an identical retry, rejects a different payload hash, and leaves commit/rollback to the caller. Seven isolated PostgreSQL/unit tests pass; the protected approval endpoint uses it for atomic booking/audit writes.
 
 ## Files added or changed in this phase
 
@@ -56,7 +60,7 @@ Pricing policy v1 and booking financial contract v1 are implemented. Financial-c
 
 ## Recommended next task
 
-Before importer-review approval, configure/provision a trusted JWT issuer and signing key, separately authorize operational application of the isolated-validated `audit_log` migration, then integrate the helper into and test the protected write path. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
+Before operational use of importer-review approval, separately authorize and apply the isolated-validated audit migration, provision the trusted JWT secret/issuer/audience, and verify `DATABASE_URL` in the target environment. The endpoint has no frontend approval action yet. Review placeholder-like local DB URL fallbacks in import scripts as a separate configuration task; do not rely on them operationally. Keep raw tour labels, deterministic mappings, and review visibility; avoid silent remapping.
 
 Keep the following existing questions open without assumptions: whether manual-review flags become an active review workflow, and how historical booking updates should be reapplied without delete-and-reimport. Defer website integration until the broader internal model is aligned.
 

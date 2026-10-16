@@ -1,5 +1,28 @@
 # ThaiCulture Manager — Session Log
 
+## 2026-10-16 protected importer review approval endpoint
+
+### What changed
+
+- Added `POST /bookings/{booking_code}/import-review/decision`, protected by the existing JWT dependency and permission `bookings.import_review.approve`.
+- Supports documented transitions among `confirmed`, `probable_manual_review`, and `unmapped`, including approval, probable-to-unmapped rejection, and corrections. It requires explicit confirmation, expected current mapping fields, and a UUID `request_id`; state-changing decisions require a reason.
+- Locks the booking row and validates the expected mapping snapshot. A confirmed mapping requires an existing active canonical tour locked for share. Review/unmapped targets store `tour_id = NULL`.
+- Updates only `mapping_status`, `tour_id`, and `needs_manual_review`; it preserves `imported_raw_tour_name` and operational booking status.
+- Uses the existing caller-transaction audit helper. Booking update and audit insert are atomic; identical retries return the existing event and a reused actor/request ID with a different payload returns 409.
+- No frontend, migration, global resolver, booking status, payment, or operational database changes were made. The published audit migration remains unapplied operationally.
+
+### Verification
+
+- Fourteen approval endpoint tests passed against a dedicated temporary PostgreSQL instance using synthetic fixtures. Coverage includes success, missing booking, missing/inactive tour, stale update, permission binding/denial, missing/invalid token, invalid issuer/audience, required request ID and explicit confirmation, probable-to-unmapped, atomic audit, audit failure rollback, sequential/concurrent idempotent retry, and payload conflict.
+- Ten auth tests and the booking review visibility test passed; auth tests cover missing/invalid identity, invalid issuer/audience, and permission rejection using mocked connections.
+- `compileall` passed. Final `git diff --check` is run before commit.
+- The temporary PostgreSQL container, named volume, Compose network, and temporary fixture files were removed. The operational database was not accessed.
+
+### Deployment blockers and security note
+
+- Do not use the endpoint operationally until the additive audit migration is separately authorized/applied and trusted JWT settings are provisioned.
+- Existing import-script DB URL fallbacks look placeholder-like/local, but may be used if `DATABASE_URL` is absent. Values are intentionally omitted; credential/configuration cleanup remains separate and Git history was not rewritten.
+
 ## 2026-10-16 transactional audit helper and idempotency
 
 - Added `backend/app/audit.py` with deterministic UTF-8 compact/sorted JSON canonicalization, UUID normalization, trimmed reason, and lowercase SHA-256 request hashing. `request_id` is excluded from the hash.

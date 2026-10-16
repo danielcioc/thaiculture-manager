@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 from datetime import date, time
 from decimal import Decimal
+from uuid import UUID
 
+from app.audit import AuditIdempotencyConflict, run_idempotent_audit_event
+from app.auth import CurrentUser, require_permission
 from app.database import get_connection
 from app.financials import PAYMENT_TOTALS_SQL, booking_financial_summary
 
@@ -27,6 +30,55 @@ class BookingCreate(BaseModel):
     guide_language: str = "EN"
     selling_price: Decimal = Decimal("0.00")
     currency: str = "THB"
+
+
+MappingStatus = Literal["confirmed", "probable_manual_review", "unmapped"]
+
+
+class ImportReviewDecision(BaseModel):
+    expected_mapping_status: MappingStatus
+    expected_tour_id: Optional[UUID]
+    expected_needs_manual_review: bool
+    mapping_status: MappingStatus
+    tour_id: Optional[UUID] = None
+    reason: Optional[str] = None
+    confirm: bool
+    request_id: UUID
+
+    class Config:
+        extra = "forbid"
+
+
+def _review_snapshot(booking, *, mapping_status, tour_id, tour_name, needs_manual_review):
+    return {
+        "booking_id": str(booking["id"]),
+        "booking_code": booking["booking_code"],
+        "imported_raw_tour_name": booking["imported_raw_tour_name"],
+        "mapping_status": mapping_status,
+        "tour_id": str(tour_id) if tour_id else None,
+        "tour_name": tour_name,
+        "needs_manual_review": needs_manual_review,
+    }
+
+
+def _review_action(old_status, old_tour_id, new_status, new_tour_id):
+    if old_status == new_status and old_tour_id == new_tour_id:
+        return "import_review.noop"
+    if old_status == "probable_manual_review" and new_status == "unmapped":
+        return "import_review.rejected"
+    if old_status in {"probable_manual_review", "unmapped"} and new_status == "confirmed":
+        return "import_review.approved"
+    return "import_review.corrected"
+
+
+def _valid_review_state(mapping_status, tour_id, needs_manual_review):
+    if mapping_status == "confirmed":
+        return tour_id is not None and needs_manual_review is False
+    return (
+        mapping_status in {"probable_manual_review", "unmapped"}
+        and tour_id is None
+        and needs_manual_review is True
+    )
 
 
 @router.get("")
@@ -840,3 +892,196 @@ def get_booking_full_detail(booking_code: str):
                     "cost_source": cost_source,
                 },
             }
+
+
+@router.post("/{booking_code}/import-review/decision")
+def decide_import_review(
+    booking_code: str,
+    payload: ImportReviewDecision,
+    current_user: CurrentUser = Depends(
+        require_permission("bookings.import_review.approve")
+    ),
+):
+    """Approve or correct an imported tour mapping with an atomic audit event."""
+    if payload.confirm is not True:
+        raise HTTPException(status_code=400, detail="Explicit confirmation is required")
+
+    reason = (payload.reason or "").strip()
+    target_tour_id = payload.tour_id if payload.mapping_status == "confirmed" else None
+    if payload.mapping_status == "confirmed" and target_tour_id is None:
+        raise HTTPException(status_code=422, detail="A canonical tour is required for confirmed mapping")
+    if payload.mapping_status != "confirmed" and payload.tour_id is not None:
+        raise HTTPException(status_code=422, detail="Review mappings cannot have a tour_id")
+
+    try:
+        with get_connection() as conn:
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT b.id, b.booking_code, b.status,
+                               b.imported_raw_tour_name, b.mapping_status,
+                               b.tour_id, b.needs_manual_review, t.name AS tour_name
+                        FROM bookings b
+                        LEFT JOIN tours t ON t.id = b.tour_id
+                        WHERE b.booking_code = %s
+                        FOR UPDATE OF b
+                        """,
+                        (booking_code,),
+                    )
+                    row = cur.fetchone()
+                    if row is None:
+                        raise HTTPException(status_code=404, detail="Booking not found")
+
+                    columns = (
+                        "id", "booking_code", "status", "imported_raw_tour_name",
+                        "mapping_status", "tour_id", "needs_manual_review", "tour_name",
+                    )
+                    booking = dict(zip(columns, row))
+                    old_status = booking["mapping_status"]
+                    old_tour_id = booking["tour_id"]
+                    old_review_flag = booking["needs_manual_review"]
+
+                    old_value = _review_snapshot(
+                        booking,
+                        mapping_status=old_status,
+                        tour_id=old_tour_id,
+                        tour_name=booking["tour_name"],
+                        needs_manual_review=old_review_flag,
+                    )
+                    new_value = _review_snapshot(
+                        booking,
+                        mapping_status=payload.mapping_status,
+                        tour_id=target_tour_id,
+                        tour_name=None,
+                        needs_manual_review=payload.mapping_status != "confirmed",
+                    )
+                    action = _review_action(
+                        old_status, old_tour_id, payload.mapping_status, target_tour_id
+                    )
+                    request_payload = {
+                        "booking_id": booking["id"],
+                        "booking_code": booking["booking_code"],
+                        "expected": {
+                            "mapping_status": payload.expected_mapping_status,
+                            "tour_id": payload.expected_tour_id,
+                            "needs_manual_review": payload.expected_needs_manual_review,
+                        },
+                        "target": {
+                            "mapping_status": payload.mapping_status,
+                            "tour_id": target_tour_id,
+                        },
+                        "reason": reason,
+                    }
+
+                    def apply_decision(transaction):
+                        if not _valid_review_state(old_status, old_tour_id, old_review_flag):
+                            raise HTTPException(
+                                status_code=409,
+                                detail="Current booking mapping metadata is inconsistent",
+                            )
+                        if (
+                            old_status != payload.expected_mapping_status
+                            or old_tour_id != payload.expected_tour_id
+                            or old_review_flag != payload.expected_needs_manual_review
+                        ):
+                            raise HTTPException(
+                                status_code=409,
+                                detail="Booking mapping changed; reload before retrying",
+                            )
+
+                        no_op = (
+                            old_status == payload.mapping_status
+                            and old_tour_id == target_tour_id
+                        )
+                        if not no_op and not reason:
+                            raise HTTPException(
+                                status_code=422,
+                                detail="A reason is required for a mapping change",
+                            )
+                        allowed = {
+                            "probable_manual_review": {
+                                "confirmed", "unmapped", "probable_manual_review",
+                            },
+                            "unmapped": {"confirmed", "unmapped"},
+                            "confirmed": {"confirmed", "probable_manual_review", "unmapped"},
+                        }
+                        if payload.mapping_status not in allowed.get(old_status, set()):
+                            raise HTTPException(
+                                status_code=422,
+                                detail="This mapping transition is not allowed",
+                            )
+
+                        target_tour_name = None
+                        if payload.mapping_status == "confirmed":
+                            with transaction.cursor() as tour_cur:
+                                tour_cur.execute(
+                                    """
+                                    SELECT id, name
+                                    FROM tours
+                                    WHERE id = %s AND is_active = true
+                                    FOR SHARE
+                                    """,
+                                    (target_tour_id,),
+                                )
+                                tour = tour_cur.fetchone()
+                            if tour is None:
+                                raise HTTPException(
+                                    status_code=422,
+                                    detail="Canonical tour does not exist or is inactive",
+                                )
+                            target_tour_name = tour[1]
+
+                        new_value["tour_name"] = target_tour_name
+                        transaction.execute(
+                            """
+                            UPDATE bookings
+                            SET mapping_status = %s,
+                                tour_id = %s,
+                                needs_manual_review = %s
+                            WHERE id = %s
+                            """,
+                            (
+                                payload.mapping_status,
+                                target_tour_id,
+                                payload.mapping_status != "confirmed",
+                                booking["id"],
+                            ),
+                        )
+                        return {
+                            "booking_status": booking["status"],
+                            "tour_name": target_tour_name,
+                        }
+
+                    result = run_idempotent_audit_event(
+                        conn,
+                        user_id=current_user.id,
+                        request_id=payload.request_id,
+                        request_payload=request_payload,
+                        entity_type="booking_import_review",
+                        entity_id=booking["id"],
+                        action=action,
+                        old_value=old_value,
+                        new_value=new_value,
+                        actor_email_snapshot=current_user.email,
+                        actor_name_snapshot=current_user.full_name,
+                        reason=reason or None,
+                        operation=apply_decision,
+                    )
+
+                    event = result.event
+                    saved = event["new_value"]
+                    return {
+                        "booking_id": str(booking["id"]),
+                        "booking_code": booking["booking_code"],
+                        "status": booking["status"],
+                        "imported_raw_tour_name": booking["imported_raw_tour_name"],
+                        "mapping_status": saved["mapping_status"],
+                        "needs_manual_review": saved["needs_manual_review"],
+                        "tour_id": saved["tour_id"],
+                        "tour_name": saved["tour_name"],
+                        "review_event_id": str(event["id"]),
+                        "replayed": result.replayed,
+                    }
+    except AuditIdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
