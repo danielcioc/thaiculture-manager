@@ -85,3 +85,11 @@ At the next session start, read in this order:
 - Payment writes accept the seven V1.1 statuses. Paid totals include only positive same-currency `paid`/`partiallypaid` rows. Cancelled, draft, invalid, non-positive, and currency-mismatched rows are excluded.
 - Balance is clamped to zero. Financial status is derived independently from operational booking status. Booking Detail shows a distinct financial summary and payment list; no invoice automation was added.
 - Staging validation remains separate and pending provisioning. No operational database was accessed for this milestone.
+
+## Financial Operations Polish — 2026-10-16
+
+- `/dashboard/summary` adds backend-derived financial KPI counts (`unpaid`, `depositrequested`, `depositpaid`, `partiallypaid`, `paid`, `overdue`) and `total_outstanding`, using `backend/app/financials.py`. Existing operational margin calculations and the previous dashboard fields are unchanged.
+- Booking list includes `booking_financial_status`, `paid_amount`, and `balance_due` from the same backend helper.
+- `/payments` accepts optional `status`, `sort_by=paid_at|due_at`, and `sort_order=asc|desc`; `/payments/summary` returns canonical status counts and collected amounts by currency. Payment rows expose `currency_matches_booking` and `financial_error`.
+- Payments and Booking Detail show all payment statuses, paid/due dates, notes, empty/loading/error states, and explicit currency mismatch warnings. Currency-mismatched payments do not contribute to collected or booking totals.
+- No schema changes or operational DB access. Staging validation remains pending and separate. Review Queue, operational booking status, pricing, and margin formulas were not changed.

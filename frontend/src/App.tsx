@@ -23,8 +23,12 @@ import type { GuidesResponse } from './types/guides';
 import type { DriversResponse } from './types/drivers';
 import type { LocationsResponse } from './types/locations';
 import type { InvoiceDetailResponse, InvoicesResponse } from './types/invoices';
+import type { DashboardSummary } from './types/dashboard';
+import type { PaymentOperationsSummary } from './types/payments';
 import './index.css';
 import { formatCurrency } from './utils/formatters';
+import { dashboardFinancialCards } from './utils/dashboardFinancialCards';
+import { paymentListQuery } from './utils/paymentListQuery';
 
 type View =
   | 'dashboard'
@@ -47,6 +51,14 @@ function App() {
   const [tours, setTours] = useState<ToursResponse | null>(null);
   const [assignments, setAssignments] = useState<AssignmentsResponse | null>(null);
   const [payments, setPayments] = useState<PaymentsResponse | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<PaymentOperationsSummary | null>(null);
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [paymentSortBy, setPaymentSortBy] = useState<'paid_at' | 'due_at'>('paid_at');
+  const [paymentSortOrder, setPaymentSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [dashboardError, setDashboardError] = useState('');
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [guides, setGuides] = useState<GuidesResponse | null>(null);
   const [drivers, setDrivers] = useState<DriversResponse | null>(null);
   const [locations, setLocations] = useState<LocationsResponse | null>(null);
@@ -111,10 +123,9 @@ function App() {
       .catch((e) => setError(e.message))
       .finally(() => setLoadingAssignments(false));
 
-    apiGet<PaymentsResponse>('/payments')
-      .then(setPayments)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoadingPayments(false));
+    apiGet<PaymentOperationsSummary>('/payments/summary')
+      .then(setPaymentSummary)
+      .catch((e) => setPaymentError(e.message));
 
     apiGet<GuidesResponse>('/guides')
       .then(setGuides)
@@ -135,6 +146,22 @@ function App() {
       .then((data) => setInvoices(data as InvoicesResponse))
       .catch((e) => setError(e.message))
       .finally(() => setLoadingInvoices(false));
+  }, []);
+
+  useEffect(() => {
+    setLoadingPayments(true);
+    setPaymentError('');
+    apiGet<PaymentsResponse>(paymentListQuery(paymentStatusFilter, paymentSortBy, paymentSortOrder))
+      .then(setPayments)
+      .catch((e) => setPaymentError(e.message))
+      .finally(() => setLoadingPayments(false));
+  }, [paymentStatusFilter, paymentSortBy, paymentSortOrder]);
+
+  useEffect(() => {
+    apiGet<DashboardSummary>('/dashboard/summary')
+      .then(setDashboardSummary)
+      .catch((e) => setDashboardError(e.message))
+      .finally(() => setLoadingDashboard(false));
   }, []);
 
   useEffect(() => {
@@ -270,9 +297,20 @@ function App() {
     }
 
     if (view === 'payments') {
-      if (loadingPayments) return <section className="panel">Loading payments...</section>;
-      if (!payments) return <section className="panel">No payment data available.</section>;
-      return <PaymentsList data={payments} />;
+      if (loadingPayments && !payments) return <section className="panel">Loading payments...</section>;
+      return (
+        <PaymentsList
+          data={payments}
+          summary={paymentSummary}
+          loading={loadingPayments}
+          error={paymentError}
+          statusFilter={paymentStatusFilter}
+          sortBy={paymentSortBy}
+          sortOrder={paymentSortOrder}
+          onStatusFilterChange={setPaymentStatusFilter}
+          onSortChange={(sortBy, sortOrder) => { setPaymentSortBy(sortBy); setPaymentSortOrder(sortOrder); }}
+        />
+      );
     }
 
     if (view === 'guides') {
@@ -326,6 +364,33 @@ function App() {
             <strong>{invoices?.count ?? 0}</strong>
           </button>
         </div>
+        <section className="panel financial-dashboard" aria-label="Booking financial KPIs">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0 }}>Booking Financial Operations</h2>
+              <p className="section-subtitle">Backend-derived statuses and outstanding balances; independent of operational status.</p>
+            </div>
+          </div>
+          {loadingDashboard ? (
+            <p role="status">Loading financial KPIs...</p>
+          ) : dashboardError ? (
+            <p role="alert">Unable to load financial KPIs: {dashboardError}</p>
+          ) : dashboardSummary ? (
+            <div className="grid">
+              {dashboardFinancialCards(dashboardSummary).map((card) => (
+                <div className="card" key={card.key} title={card.definition}>
+                  <span>{card.label}</span>
+                  <strong>{card.key === 'total_outstanding'
+                    ? formatCurrency(card.value, dashboardSummary.currency)
+                    : card.value}</strong>
+                  <small>{card.definition}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No financial booking data available.</p>
+          )}
+        </section>
       </>
     );
   };

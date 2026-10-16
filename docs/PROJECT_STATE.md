@@ -129,3 +129,12 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - `balance_due = max(total_amount - paid_amount, 0)`. Derived booking financial statuses are `unpaid`, `depositrequested`, `depositpaid`, `partiallypaid`, `paid`, and `overdue`, in that precedence order as documented in the financial workflow.
 - Booking Detail has a separate financial summary and payment details. Operational booking status and operations margin formulas remain independent. No invoice generation was added.
 - Staging validation remains pending provisioning and was not required or accessed for this implementation.
+
+## Financial Operations Polish — 2026-10-16
+
+- Dashboard `/dashboard/summary` now includes `financial_kpis` derived through the canonical `booking_financial_summary` helper: counts for unpaid, depositrequested, depositpaid, partiallypaid, paid, overdue, and total outstanding. Outstanding is summed across all bookings independently of operational status.
+- Existing dashboard revenue, cost, gross-margin, and margin-percent formulas were left unchanged.
+- Booking list responses include backend-derived booking financial status, paid amount, and balance due; the Bookings view displays these beside the independent operational status.
+- Payments supports server-side status filtering and sorting by paid or due date. A summary endpoint returns status counts and collected totals per payment currency. Collected totals include only positive same-currency paid/partiallypaid records; cancelled, draft, invalid, and mismatched records are excluded. Mismatches are explicitly flagged.
+- Booking Detail now displays pending amount and explains an unconfigured deposit; mismatched payment rows are visibly marked and remain excluded by backend aggregation.
+- No schema migration, operational database access, Review Queue change, booking-status change, pricing change, or operational-margin formula change was made. Staging remains a separate pending task.

@@ -156,8 +156,9 @@ export function BookingDetail({ data, onBack, loading, error = '', pricingQuote,
             </div>
             <div className="grid">
               <div className="card"><span>Total</span><strong>{formatCurrency(financialView.total, payment_summary.currency)}</strong></div>
-              <div className="card"><span>Deposit</span><strong>{financialView.deposit == null ? 'Not configured' : formatCurrency(financialView.deposit, payment_summary.currency)}</strong></div>
+              <div className="card"><span>Deposit</span><strong>{financialView.deposit == null ? 'Unknown' : formatCurrency(financialView.deposit, payment_summary.currency)}</strong><small>{financialView.deposit == null ? 'No deposit amount is configured for this booking.' : 'Configured deposit target.'}</small></div>
               <div className="card"><span>Paid</span><strong>{formatCurrency(financialView.paid, payment_summary.currency)}</strong></div>
+              <div className="card"><span>Pending</span><strong>{formatCurrency(financialView.pending, payment_summary.currency)}</strong><small>Valid requested, pending, or overdue payments in the booking currency.</small></div>
               <div className="card"><span>Balance due</span><strong>{formatCurrency(financialView.balance, payment_summary.currency)}</strong></div>
             </div>
           </section>
@@ -277,6 +278,9 @@ export function BookingDetail({ data, onBack, loading, error = '', pricingQuote,
                   <div className="detail-stack">
                     {payments.map((payment) => (
                       <div className="mini-card" key={payment.id}>
+                        {payment.financial_error === 'currency_mismatch' && (
+                          <p className="financial-error" role="alert">Currency mismatch: this payment is excluded from booking financial totals.</p>
+                        )}
                         <div className="mini-card-top">
                           <strong>
                             {formatCurrency(payment.amount, payment.currency)}

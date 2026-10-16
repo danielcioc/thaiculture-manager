@@ -104,6 +104,30 @@ PAYMENT_TOTALS_SQL = """
 """
 
 
+def dashboard_financial_kpis(rows):
+    """Aggregate dashboard counts using the canonical per-booking derivation."""
+    counts = {
+        "unpaid": 0,
+        "depositrequested": 0,
+        "depositpaid": 0,
+        "partiallypaid": 0,
+        "paid": 0,
+        "overdue": 0,
+    }
+    outstanding = Decimal("0.00")
+    for row in rows:
+        summary = booking_financial_summary(
+            row["total_amount"],
+            row["deposit_amount"],
+            row["paid_amount"],
+            row["pending_amount"],
+            row["has_overdue"],
+        )
+        counts[summary["booking_financial_status"]] += 1
+        outstanding += summary["balance_due"]
+    return {**counts, "total_outstanding": outstanding}
+
+
 def _money(value) -> Decimal:
     if value is None:
         return Decimal("0.00")

@@ -68,3 +68,11 @@ These are existing project questions, not decisions made by the pricing or finan
 - V1.1 aligns payment statuses and booking financial derivation and displays total, optional deposit, paid, balance, and financial status in Booking Detail.
 - Apply the additive nullable deposit migration through the normal release process. Do not backfill historical deposits without reviewed source data.
 - Staging validation remains a separate operator-provisioning task and does not block development.
+
+## Financial Operations Polish — 2026-10-16
+
+- Dashboard financial KPI counts and outstanding total are returned by the backend using the canonical booking financial derivation. `depositpaid` is displayed as its own category in addition to the requested status groups. Definitions appear with each KPI.
+- Payments now filters by all canonical payment statuses and sorts by paid date or due date. Collected totals are backend-derived per currency, excluding cancelled/draft, invalid, non-positive, and currency-mismatched rows; mismatch is an explicit error state.
+- Bookings shows financial status, paid amount, and balance from the existing backend derivation. Booking Detail includes pending amount and handles unknown deposit, no payments, loading, API error, overdue, and currency mismatch states.
+- Operational status and all existing margin formulas remain unchanged. No migration or operational DB access was required.
+- Staging validation remains pending operator provisioning and is still separate from product work.

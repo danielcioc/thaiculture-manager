@@ -52,6 +52,10 @@ export type BookingListItem = {
   guide_language: string | null;
   selling_price: number;
   currency: string;
+  booking_financial_status?: string;
+  paid_amount?: number;
+  pending_amount?: number;
+  balance_due?: number;
   imported_raw_tour_name: string | null;
   mapping_status: MappingStatus | null;
   needs_manual_review: boolean | null;
@@ -73,6 +77,8 @@ export type Payment = {
   due_at: string | null;
   reference: string | null;
   notes: string | null;
+  currency_matches_booking?: boolean;
+  financial_error?: 'currency_mismatch' | null;
 };
 
 export type Assignment = {

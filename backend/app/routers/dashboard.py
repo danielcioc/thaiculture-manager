@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.database import get_connection
+from app.financials import PAYMENT_TOTALS_SQL, dashboard_financial_kpis
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -25,6 +26,27 @@ def dashboard_summary():
                 FROM payments;
             """)
             payment_stats = cur.fetchone()
+
+            cur.execute(f"""
+                SELECT
+                    b.selling_price AS total_amount,
+                    b.deposit_amount,
+                    COALESCE(pay.paid_amount, 0) AS paid_amount,
+                    COALESCE(pay.pending_amount, 0) AS pending_amount,
+                    COALESCE(pay.has_overdue, false) AS has_overdue
+                FROM bookings b
+                LEFT JOIN (
+                    SELECT p.booking_id, {PAYMENT_TOTALS_SQL}
+                    FROM payments p
+                    JOIN bookings b ON b.id = p.booking_id
+                    GROUP BY p.booking_id, b.currency
+                ) pay ON pay.booking_id = b.id
+            """)
+            financial_rows = cur.fetchall()
+            financial_columns = [desc[0] for desc in cur.description]
+            financial_kpis = dashboard_financial_kpis([
+                dict(zip(financial_columns, row)) for row in financial_rows
+            ])
 
             cur.execute("""
                 WITH assignment_costs AS (
@@ -133,6 +155,7 @@ def dashboard_summary():
         "other_costs": other_costs,
         "gross_margin": gross_margin,
         "margin_percent": margin_percent,
+        "financial_kpis": financial_kpis,
         "currency": "THB"
     }
 

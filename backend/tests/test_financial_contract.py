@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 from unittest.mock import patch
 
-from app.financials import aggregate_payment_records, booking_financial_summary, normalize_payment_status
+from app.financials import aggregate_payment_records, booking_financial_summary, dashboard_financial_kpis, normalize_payment_status
 
 
 class BookingFinancialSummaryTests(unittest.TestCase):
@@ -76,6 +76,24 @@ class BookingFinancialSummaryTests(unittest.TestCase):
         self.assertEqual(result["pending_amount"], Decimal("75.00"))
         self.assertEqual(summary["booking_financial_status"], "overdue")
 
+    def test_dashboard_kpis_use_canonical_status_and_outstanding_derivation(self):
+        rows = [
+            {"total_amount": 100, "deposit_amount": None, "paid_amount": 0, "pending_amount": 0, "has_overdue": False},
+            {"total_amount": 100, "deposit_amount": None, "paid_amount": 0, "pending_amount": 20, "has_overdue": False},
+            {"total_amount": 100, "deposit_amount": 50, "paid_amount": 50, "pending_amount": 0, "has_overdue": False},
+            {"total_amount": 100, "deposit_amount": None, "paid_amount": 30, "pending_amount": 0, "has_overdue": False},
+            {"total_amount": 100, "deposit_amount": None, "paid_amount": 100, "pending_amount": 0, "has_overdue": False},
+            {"total_amount": 100, "deposit_amount": None, "paid_amount": 10, "pending_amount": 40, "has_overdue": True},
+        ]
+        result = dashboard_financial_kpis(rows)
+        self.assertEqual(result["unpaid"], 1)
+        self.assertEqual(result["depositrequested"], 1)
+        self.assertEqual(result["depositpaid"], 1)
+        self.assertEqual(result["partiallypaid"], 1)
+        self.assertEqual(result["paid"], 1)
+        self.assertEqual(result["overdue"], 1)
+        self.assertEqual(result["total_outstanding"], Decimal("410.00"))
+
 
 class PaymentPayloadValidationTests(unittest.TestCase):
     def test_new_payment_statuses_are_accepted_and_unknown_statuses_rejected(self):
@@ -130,7 +148,7 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import psycopg
-        from app.routers import bookings, invoices, payments
+        from app.routers import bookings, dashboard, invoices, payments
 
         cls.psycopg = psycopg
         cls.schema = f"financial_test_{uuid4().hex[:12]}"
@@ -206,7 +224,7 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
                 );
                 CREATE TABLE pricing_quotes (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), booking_id uuid,
-                    breakdown jsonb, created_at timestamptz DEFAULT now()
+                    total_cost numeric(12,2), breakdown jsonb, created_at timestamptz DEFAULT now()
                 );
                 CREATE TABLE invoices (
                     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -226,6 +244,7 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         cls.patches = [
             patch.object(payments, "get_connection", test_connection),
             patch.object(bookings, "get_connection", test_connection),
+            patch.object(dashboard, "get_connection", test_connection),
             patch.object(invoices, "get_connection", test_connection),
         ]
         for patcher in cls.patches:
@@ -243,6 +262,7 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         self.booking_id = uuid4()
         self.booking_code = f"TST-FIN-{uuid4().hex[:10]}"
         with self.connection_factory() as conn:
+            conn.execute("TRUNCATE payments, assignments, pricing_quotes, invoices, bookings, customers CASCADE")
             conn.execute(
                 "INSERT INTO customers (id, display_name, email) VALUES (%s, %s, %s)",
                 (self.customer_id, "Financial Test Customer", "test@example.invalid"),
@@ -293,6 +313,78 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         self.assertEqual(Decimal(str(summary["balance_due"])), Decimal("10500.00"))
         self.assertEqual(summary["booking_financial_status"], "unpaid")
 
+    def test_payments_list_filters_and_sorts_with_explicit_currency_mismatch(self):
+        from app.routers.payments import list_payments
+
+        with self.connection_factory() as conn:
+            conn.execute(
+                "INSERT INTO payments (booking_id, amount, currency, method, status, paid_at, due_at) VALUES "
+                "(%s, 100, 'THB', 'cash', 'paid', now(), now()), "
+                "(%s, 300, 'THB', 'cash', 'cancelled', now() - interval '1 day', now()), "
+                "(%s, 50, 'USD', 'cash', 'paid', now() - interval '2 days', now())",
+                (self.booking_id, self.booking_id, self.booking_id),
+            )
+            conn.commit()
+
+        result = list_payments(sort_by="due_at", sort_order="asc")
+        self.assertEqual(result["count"], 3)
+        mismatch = next(item for item in result["items"] if item["currency"] == "USD")
+        self.assertFalse(mismatch["currency_matches_booking"])
+        self.assertEqual(mismatch["financial_error"], "currency_mismatch")
+        paid = list_payments(status="paid")
+        self.assertEqual(paid["count"], 2)
+        self.assertTrue(all(item["status"] == "paid" for item in paid["items"]))
+
+    def test_payment_summary_excludes_cancelled_draft_and_currency_mismatch(self):
+        from app.routers.payments import payments_summary
+
+        with self.connection_factory() as conn:
+            conn.execute(
+                "INSERT INTO payments (booking_id, amount, currency, method, status) VALUES "
+                "(%s, 500, 'THB', 'cash', 'paid'), "
+                "(%s, 300, 'THB', 'cash', 'partiallypaid'), "
+                "(%s, 250, 'THB', 'cash', 'cancelled'), "
+                "(%s, 200, 'THB', 'cash', 'draft'), "
+                "(%s, 100, 'USD', 'cash', 'paid')",
+                (self.booking_id,) * 5,
+            )
+            conn.commit()
+
+        result = payments_summary()
+        thb = next(item for item in result["currencies"] if item["currency"] == "THB")
+        usd = next(item for item in result["currencies"] if item["currency"] == "USD")
+        self.assertEqual(thb["collected_amount"], Decimal("800.00"))
+        self.assertEqual(thb["cancelled_count"], 1)
+        self.assertEqual(thb["draft_count"], 1)
+        self.assertEqual(usd["collected_amount"], Decimal("0.00"))
+        self.assertEqual(usd["currency_mismatch_count"], 1)
+
+    def test_invalid_payment_status_filter_returns_422_without_database_access(self):
+        from fastapi import HTTPException
+        from app.routers.payments import list_payments
+
+        with self.assertRaises(HTTPException) as error:
+            list_payments(status="unknown-status")
+        self.assertEqual(error.exception.status_code, 422)
+
+    def test_dashboard_financial_kpis_dont_change_operational_margin_contract(self):
+        from app.routers import dashboard
+
+        with self.connection_factory() as conn:
+            conn.execute(
+                "INSERT INTO assignments (booking_id, assignment_type, cost) VALUES (%s, 'guide', 6000)",
+                (self.booking_id,),
+            )
+            conn.commit()
+
+        summary = dashboard.dashboard_summary()
+        self.assertEqual(summary["total_revenue"], Decimal("10500.00"))
+        self.assertEqual(summary["total_costs"], Decimal("6000.00"))
+        self.assertEqual(summary["gross_margin"], Decimal("4500.00"))
+        self.assertEqual(Decimal(str(summary["margin_percent"])), Decimal("42.86"))
+        self.assertEqual(summary["financial_kpis"]["unpaid"], 1)
+        self.assertEqual(summary["financial_kpis"]["total_outstanding"], Decimal("10500.00"))
+
     def test_payment_currency_must_match_booking_currency(self):
         from fastapi import HTTPException
         from app.routers.payments import PaymentCreate, create_payment
@@ -321,8 +413,9 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
             )
             conn.execute(
                 "INSERT INTO payments (booking_id, amount, currency, method, status, paid_at, due_at, notes) "
-                "VALUES (%s, 2000.00, 'THB', 'Bank transfer', 'paid', now(), now() + interval '15 days', 'Deposit receipt')",
-                (self.booking_id,),
+                "VALUES (%s, 2000.00, 'THB', 'Bank transfer', 'paid', now(), now() + interval '15 days', 'Deposit receipt'), "
+                "(%s, 1000.00, 'USD', 'Bank transfer', 'paid', now(), NULL, 'Currency mismatch')",
+                (self.booking_id, self.booking_id),
             )
             conn.commit()
 
@@ -334,8 +427,12 @@ class FinancialEndpointIntegrationTests(unittest.TestCase):
         self.assertEqual(Decimal(str(summary["paid_amount"])), Decimal("2000.00"))
         self.assertEqual(Decimal(str(summary["balance_due"])), Decimal("8500.00"))
         self.assertEqual(summary["booking_financial_status"], "depositpaid")
-        self.assertEqual(result["payments"][0]["notes"], "Deposit receipt")
-        self.assertIsNotNone(result["payments"][0]["due_at"])
+        deposit_payment = next(item for item in result["payments"] if item["currency"] == "THB")
+        self.assertEqual(deposit_payment["notes"], "Deposit receipt")
+        self.assertIsNotNone(deposit_payment["due_at"])
+        mismatch = next(item for item in result["payments"] if item["currency"] == "USD")
+        self.assertFalse(mismatch["currency_matches_booking"])
+        self.assertEqual(mismatch["financial_error"], "currency_mismatch")
 
     def test_invalid_payment_amount_and_field_lengths_do_not_insert(self):
         payload = {

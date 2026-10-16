@@ -125,6 +125,15 @@ export function BookingsList({
                       <div className={`booking-tour${booking.tour_name ? '' : ' missing-canonical-tour'}`}>
                         {booking.tour_name || 'Needs review'}
                       </div>
+                      {booking.booking_financial_status && (
+                        <div className="booking-financial-inline">
+                          <span className={`meta-pill ${getStatusClass(booking.booking_financial_status)}`}>
+                            {booking.booking_financial_status}
+                          </span>
+                          <span>Paid {formatCurrency(booking.paid_amount, booking.currency)}</span>
+                          <span>Balance {formatCurrency(booking.balance_due, booking.currency)}</span>
+                        </div>
+                      )}
                     </div>
                     <span className={`status ${getStatusClass(booking.status)}`}>
                       {booking.status}

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
@@ -39,11 +39,43 @@ class PaymentCreate(BaseModel):
         return normalized
 
 
+_RESPONSE_STATUS_SQL = """CASE
+    WHEN LOWER(BTRIM(p.status)) = 'overdue'
+      OR (LOWER(BTRIM(p.status)) IN ('requested', 'pending') AND p.due_at IS NOT NULL AND p.due_at < CURRENT_TIMESTAMP)
+    THEN 'overdue'
+    WHEN LOWER(BTRIM(p.status)) IN ('partially_paid', 'partially paid') THEN 'partiallypaid'
+    ELSE LOWER(BTRIM(p.status))
+END"""
+
+
+def _payment_response(row, columns):
+    item = dict(zip(columns, row))
+    item["status"] = payment_status_for_response(item["status"], item.get("due_at"))
+    item["currency_matches_booking"] = (
+        str(item.get("currency") or "").strip().upper()
+        == str(item.get("booking_currency") or "").strip().upper()
+    )
+    item["financial_error"] = None if item["currency_matches_booking"] else "currency_mismatch"
+    return item
+
+
 @router.get("")
-def list_payments():
+def list_payments(
+    status: Optional[str] = None,
+    sort_by: Literal["paid_at", "due_at"] = "paid_at",
+    sort_order: Literal["asc", "desc"] = "desc",
+):
+    normalized_status = None
+    if status:
+        try:
+            normalized_status = normalize_payment_status(status)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    sort_column = "p.paid_at" if sort_by == "paid_at" else "p.due_at"
+    sort_direction = "ASC" if sort_order == "asc" else "DESC"
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT
                     p.id,
                     p.booking_id,
@@ -56,23 +88,53 @@ def list_payments():
                     p.paid_at,
                     p.due_at,
                     p.reference,
-                    p.notes
+                    p.notes,
+                    b.currency AS booking_currency
                 FROM payments p
                 LEFT JOIN bookings b ON b.id = p.booking_id
                 LEFT JOIN customers c ON c.id = b.customer_id
-                ORDER BY p.paid_at DESC NULLS LAST, b.created_at DESC
+                WHERE (%s::text IS NULL OR ({_RESPONSE_STATUS_SQL}) = %s)
+                ORDER BY {sort_column} {sort_direction} NULLS LAST, b.created_at DESC
                 LIMIT 100;
-            """)
+            """, (normalized_status, normalized_status))
             rows = cur.fetchall()
             columns = [desc[0] for desc in cur.description]
 
     return {
         "count": len(rows),
-        "items": [
-            {**dict(zip(columns, row)), "status": payment_status_for_response(row[7], row[9])}
-            for row in rows
-        ],
+        "filters": {"status": normalized_status, "sort_by": sort_by, "sort_order": sort_order},
+        "items": [_payment_response(row, columns) for row in rows],
     }
+
+
+@router.get("/summary")
+def payments_summary():
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT
+                    UPPER(BTRIM(p.currency::text)) AS currency,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'draft') AS draft_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'requested') AS requested_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'pending') AS pending_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'paid') AS paid_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'partiallypaid') AS partiallypaid_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'overdue') AS overdue_count,
+                    COUNT(*) FILTER (WHERE ({_RESPONSE_STATUS_SQL}) = 'cancelled') AS cancelled_count,
+                    COUNT(*) FILTER (WHERE UPPER(BTRIM(p.currency::text)) <> UPPER(BTRIM(b.currency::text))) AS currency_mismatch_count,
+                    COALESCE(SUM(p.amount) FILTER (
+                        WHERE ({_RESPONSE_STATUS_SQL}) IN ('paid', 'partiallypaid')
+                          AND p.amount > 0
+                          AND UPPER(BTRIM(p.currency::text)) = UPPER(BTRIM(b.currency::text))
+                    ), 0) AS collected_amount
+                FROM payments p
+                JOIN bookings b ON b.id = p.booking_id
+                GROUP BY UPPER(BTRIM(p.currency::text))
+                ORDER BY currency;
+            """)
+            rows = cur.fetchall()
+            columns = [desc[0] for desc in cur.description]
+    return {"currencies": [dict(zip(columns, row)) for row in rows]}
 
 
 @router.post("")
@@ -154,7 +216,8 @@ def list_payments_for_booking(booking_code: str):
                     p.paid_at,
                     p.due_at,
                     p.reference,
-                    p.notes
+                    p.notes,
+                    b.currency AS booking_currency
                 FROM payments p
                 LEFT JOIN bookings b ON b.id = p.booking_id
                 LEFT JOIN customers c ON c.id = b.customer_id
@@ -169,7 +232,7 @@ def list_payments_for_booking(booking_code: str):
         "booking_code": booking_code,
         "count": len(rows),
         "items": [
-            {**dict(zip(columns, row)), "status": payment_status_for_response(row[7], row[9])}
+                    _payment_response(row, columns)
             for row in rows
         ],
     }

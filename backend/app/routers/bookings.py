@@ -308,11 +308,15 @@ def list_bookings(needs_manual_review: Optional[bool] = None):
             else:
                 margin_percent = 0
 
-        booking_financial_status = booking_financial_summary(
+        financial_summary = booking_financial_summary(
             selling_price, deposit_amount, paid_amount, pending_amount, has_overdue
-        )["booking_financial_status"]
+        )
+        booking_financial_status = financial_summary["booking_financial_status"]
 
         item["booking_financial_status"] = booking_financial_status
+        item["paid_amount"] = financial_summary["paid_amount"]
+        item["pending_amount"] = financial_summary["pending_amount"]
+        item["balance_due"] = financial_summary["balance_due"]
         item["revenue_ex_vat"] = revenue_ex_vat
         item["vat_amount"] = vat_amount
         item["guide_cost"] = guide_cost
@@ -667,17 +671,19 @@ def get_booking_full_detail(booking_code: str):
                     paid_at,
                     due_at,
                     reference,
-                    notes
+                    notes,
+                    currency = (SELECT currency FROM bookings WHERE id = %s) AS currency_matches_booking
                 FROM payments
                 WHERE booking_id = %s
                 ORDER BY paid_at DESC NULLS LAST, amount ASC;
-            """, (booking_data["id"],))
+            """, (booking_data["id"], booking_data["id"]))
 
             payment_rows = cur.fetchall()
             payment_columns = [desc[0] for desc in cur.description]
             payments = [dict(zip(payment_columns, row)) for row in payment_rows]
             for payment in payments:
                 payment["status"] = payment_status_for_response(payment["status"], payment["due_at"])
+                payment["financial_error"] = None if payment["currency_matches_booking"] else "currency_mismatch"
 
             # Payment summary
             cur.execute(f"""

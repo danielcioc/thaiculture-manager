@@ -358,6 +358,16 @@ p {
   font-size: 0.96rem;
 }
 
+.booking-financial-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .import-review-metadata {
   display: grid;
   gap: 8px;
@@ -1054,6 +1064,44 @@ p {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px 18px;
+}
+
+.payment-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.payment-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.payment-controls select {
+  min-width: 150px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #334155);
+  border-radius: 8px;
+  background: var(--surface, #111827);
+  color: inherit;
+}
+
+.financial-error {
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, 0.48);
+  border-radius: 9px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.financial-dashboard .card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 @media (max-width: 900px) {

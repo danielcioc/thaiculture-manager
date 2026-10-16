@@ -255,3 +255,12 @@
 - Booking Detail now presents a separate financial summary with empty/loading/error states. Operational booking status, review behavior, and margin formulas were left unchanged; invoice generation was not added.
 - Staging remains separate. No operational database was accessed.
 - Verification: financial/API tests passed against a dedicated temporary PostgreSQL container; the migration was applied after the initial schema in a disposable schema and verified as nullable `numeric(12,2)` with no default. Auth (10), visibility (1), compileall, frontend tests (9), build, lint, and `git diff --check` passed. The final full backend suite ran 67 tests: 66 passed and the existing `test_current_payment_import_inserts_row` failed because its payment CSV fixture lacks `amount`; no tests were skipped with the isolated test DB available. The temporary container, volume, network, and helper files were removed.
+
+
+## 2026-10-16 Financial Operations Polish
+
+- Added Dashboard financial KPIs from the backend canonical derivation: unpaid, depositrequested, depositpaid, partiallypaid, paid, overdue, and total outstanding. Added definitions to the UI; previous revenue/cost/margin formulas remain unchanged.
+- Booking list now displays backend-derived financial status, paid amount, and balance. Booking Detail adds pending and explains an unconfigured deposit.
+- Payments now supports server-side filtering across canonical statuses and sorting by paid/due date. Backend summary supplies collected totals by currency and counts; cancelled/draft and currency-mismatched amounts are excluded. Currency mismatches are explicitly visible.
+- Isolated PostgreSQL: financial contract suite passed 19/19; auth 10/10, review visibility 1/1, and pricing policy 5/5 passed. Frontend tests passed 16/16, including rendered Payments and Booking Detail loading, empty, error, status, and currency-mismatch states; build, lint, compileall, and `git diff --check` passed.
+- No operational database was accessed, no schema migration was needed, and no changes were made to Review Queue, booking operational status, pricing, or margin formulas. Staging validation remains separate and pending operator provisioning.
