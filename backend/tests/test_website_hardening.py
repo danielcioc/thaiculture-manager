@@ -23,7 +23,7 @@ class WebsiteRequestValidationTests(unittest.TestCase):
             WebsiteBookingRequest(
                 quote_id=UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
                 date=date.today() + timedelta(days=30), adults=1, currency="THB",
-                customer=WebsiteCustomer(name="Guest", email="guest@example.com", phone="1"),
+                customer=WebsiteCustomer(name="Guest", email="guest@example.com"),
                 notes="N" * 2001,
             )
 
@@ -196,8 +196,6 @@ class WebsiteIdempotencyRegressionTests(unittest.TestCase):
 
         with patch.object(website.settings, "website_integration_enabled", True), patch.object(
             website, "_website_connection", return_value=Connection()
-        ), patch.object(website, "_normalized_booking_payload", return_value=normalized), patch.object(
-            website, "_canonical_payload_hash", return_value=website._canonical_payload_hash(normalized)
         ):
             result = website.create_website_booking(
                 request, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
@@ -206,6 +204,107 @@ class WebsiteIdempotencyRegressionTests(unittest.TestCase):
         self.assertEqual(result["booking_reference"], "TCT-WEB-TEST")
         self.assertTrue(result["replayed"])
         self.assertEqual(cursor.calls, 2)
+
+    def test_legacy_retry_hash_matches_existing_phone_including_request(self):
+        request = WebsiteBookingRequest(
+            quote_id=UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            date=date.today() + timedelta(days=30), adults=1, currency="THB",
+            customer=WebsiteCustomer(name="Guest", email="guest@example.com", phone="123"),
+        )
+        normalized = website._normalized_booking_payload(request)
+        saved_response = {"booking_reference": "TCT-WEB-LEGACY", "replayed": False}
+
+        class Cursor:
+            def __init__(self):
+                self.rows = [None, (website._canonical_payload_hash(normalized), saved_response)]
+                self.calls = 0
+
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def execute(self, *_args, **_kwargs): self.calls += 1
+            def fetchone(self): return self.rows.pop(0)
+
+        cursor = Cursor()
+
+        class Connection:
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def cursor(self): return cursor
+
+        with patch.object(website.settings, "website_integration_enabled", True), patch.object(
+            website, "_website_connection", return_value=Connection()
+        ):
+            result = website.create_website_booking(request, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"))
+
+        self.assertEqual(result["booking_reference"], "TCT-WEB-LEGACY")
+        self.assertTrue(result["replayed"])
+        self.assertEqual(cursor.calls, 2)
+
+    def test_retry_without_phone_matches_new_canonical_payload(self):
+        request = WebsiteBookingRequest(
+            quote_id=UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            date=date.today() + timedelta(days=30), adults=1, currency="THB",
+            customer=WebsiteCustomer(name="Guest", email="guest@example.com"),
+        )
+        normalized = website._normalized_booking_payload(request)
+        saved_response = {"booking_reference": "TCT-WEB-NO-PHONE", "replayed": False}
+
+        class Cursor:
+            def __init__(self):
+                self.rows = [None, (website._canonical_payload_hash(normalized), saved_response)]
+                self.calls = 0
+
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def execute(self, *_args, **_kwargs): self.calls += 1
+            def fetchone(self): return self.rows.pop(0)
+
+        cursor = Cursor()
+
+        class Connection:
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def cursor(self): return cursor
+
+        with patch.object(website.settings, "website_integration_enabled", True), patch.object(
+            website, "_website_connection", return_value=Connection()
+        ):
+            result = website.create_website_booking(request, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"))
+
+        self.assertEqual(result["booking_reference"], "TCT-WEB-NO-PHONE")
+        self.assertTrue(result["replayed"])
+        self.assertEqual(cursor.calls, 2)
+
+    def test_phone_shape_change_under_same_idempotency_key_is_a_conflict(self):
+        quote_id = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        legacy = WebsiteBookingRequest(
+            quote_id=quote_id, date=date.today() + timedelta(days=30), adults=1, currency="THB",
+            customer=WebsiteCustomer(name="Guest", email="guest@example.com", phone="123"),
+        )
+        current = WebsiteBookingRequest(
+            quote_id=quote_id, date=legacy.date, adults=1, currency="THB",
+            customer=WebsiteCustomer(name="Guest", email="guest@example.com"),
+        )
+        legacy_hash = website._canonical_payload_hash(website._normalized_booking_payload(legacy))
+
+        class Cursor:
+            def __init__(self): self.rows = [None, (legacy_hash, {"booking_reference": "hidden"})]
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def execute(self, *_args, **_kwargs): pass
+            def fetchone(self): return self.rows.pop(0)
+
+        class Connection:
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def cursor(self): return Cursor()
+
+        with patch.object(website.settings, "website_integration_enabled", True), patch.object(
+            website, "_website_connection", return_value=Connection()
+        ):
+            with self.assertRaises(website.HTTPException) as error:
+                website.create_website_booking(current, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"))
+        self.assertEqual(error.exception.status_code, 409)
 
     def test_existing_idempotency_key_with_different_payload_logs_safe_conflict(self):
         request = WebsiteBookingRequest(

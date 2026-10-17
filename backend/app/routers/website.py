@@ -61,7 +61,9 @@ class WebsitePricingRequest(BaseModel):
 class WebsiteCustomer(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     email: EmailStr = Field(max_length=254)
-    phone: str = Field(min_length=1, max_length=50)
+    phone: str | None = Field(
+        default=None, min_length=1, max_length=50, json_schema_extra={"deprecated": True}
+    )
 
 
 class WebsiteBookingRequest(BaseModel):
@@ -270,6 +272,14 @@ def create_website_price_preview(request: WebsitePricingRequest):
 
 
 def _normalized_booking_payload(request: WebsiteBookingRequest) -> dict[str, Any]:
+    customer = {
+        "name": request.customer.name.strip(),
+        "email": str(request.customer.email).strip().casefold(),
+    }
+    # Keep the legacy shape when older clients send phone so existing retries
+    # continue to hash identically. New requests omit it from the payload.
+    if request.customer.phone is not None:
+        customer["phone"] = request.customer.phone.strip()
     return {
         "quote_id": str(request.quote_id),
         "date": request.date.isoformat(),
@@ -277,11 +287,7 @@ def _normalized_booking_payload(request: WebsiteBookingRequest) -> dict[str, Any
         "children": request.children,
         "extras": sorted(request.extras),
         "currency": request.currency,
-        "customer": {
-            "name": request.customer.name.strip(),
-            "email": str(request.customer.email).strip().casefold(),
-            "phone": request.customer.phone.strip(),
-        },
+        "customer": customer,
         "notes": request.notes.strip(),
         "source": "Website",
     }
@@ -373,10 +379,10 @@ def create_website_booking(
         else:
             cur.execute(
                 """
-                INSERT INTO customers (display_name, email, phone, preferred_language)
-                VALUES (%s, %s, %s, 'EN') RETURNING id;
+                INSERT INTO customers (display_name, email, preferred_language)
+                VALUES (%s, %s, 'EN') RETURNING id;
                 """,
-                (request.customer.name.strip(), email, request.customer.phone.strip()),
+                (request.customer.name.strip(), email),
             )
             customer_id = cur.fetchone()[0]
 

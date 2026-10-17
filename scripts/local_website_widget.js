@@ -15,7 +15,6 @@
         </div>
         <label>Full name<input name="name" autocomplete="name" maxlength="255" required></label>
         <label>Email<input name="email" type="email" autocomplete="email" required></label>
-        <label>Phone<input name="phone" type="tel" autocomplete="tel" maxlength="50" required></label>
         <label>Notes<textarea name="notes" rows="3" maxlength="2000"></textarea></label>
         <button type="button" id="tct-local-price">Calculate from Manager</button>
         <div id="tct-local-price-result" aria-live="polite"></div>
@@ -122,7 +121,7 @@
       quote_id: currentQuote.quote_id,
       date: fields.get('date'), adults: Number(fields.get('adults')),
       children: Number(fields.get('children')), extras: [], currency: currentQuote.currency,
-      customer: { name: fields.get('name'), email: fields.get('email'), phone: fields.get('phone') },
+      customer: { name: fields.get('name'), email: fields.get('email') },
       notes: fields.get('notes') || '',
     };
     const encoded = JSON.stringify(payload);

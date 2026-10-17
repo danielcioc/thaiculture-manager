@@ -1,5 +1,5 @@
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -37,6 +37,114 @@ class WebsiteIntegrationContractTests(unittest.TestCase):
         first = normalized
         second["adults"] = 4
         self.assertNotEqual(website._canonical_payload_hash(first), website._canonical_payload_hash(second))
+
+    def test_phone_is_optional_and_legacy_hash_shape_is_preserved(self):
+        from uuid import UUID
+        common = dict(
+            quote_id=UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            date=date.today() + timedelta(days=30), adults=1, currency="THB",
+            customer=WebsiteCustomer(name="Guest", email="guest@example.com"),
+        )
+        without_phone = WebsiteBookingRequest(**common)
+        legacy = WebsiteBookingRequest(
+            **{**common, "customer": WebsiteCustomer(name="Guest", email="guest@example.com", phone=" +100 ")}
+        )
+        customer_schema = WebsiteCustomer.model_json_schema()
+        phone_schema = customer_schema["properties"]["phone"]
+        new_payload = website._normalized_booking_payload(without_phone)
+        legacy_payload = website._normalized_booking_payload(legacy)
+        self.assertTrue(phone_schema["deprecated"])
+        self.assertNotIn("phone", customer_schema.get("required", []))
+        self.assertNotIn("phone", new_payload["customer"])
+        self.assertEqual(legacy_payload["customer"]["phone"], "+100")
+        self.assertNotEqual(
+            website._canonical_payload_hash(new_payload),
+            website._canonical_payload_hash(legacy_payload),
+        )
+
+    def test_new_website_customer_is_created_without_persisting_legacy_phone(self):
+        from uuid import UUID
+
+        quote_id = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        tour_id = UUID("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+        booking_id = UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+        customer_id = UUID("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+        quote_row = (
+            quote_id, tour_id, "TEST", "Test Tour", "test-tour",
+            date.today() + timedelta(days=30), 1, 0, [], "THB",
+            Decimal("100.00"), Decimal("30.00"), Decimal("90.00"),
+            "test-rule", "minimum-margin-30-v1", {},
+            website.datetime.now(website.timezone.utc) + timedelta(days=1), None,
+        )
+
+        class Cursor:
+            def __init__(self):
+                self.rows = [
+                    (UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),),
+                    quote_row,
+                    None,
+                    (customer_id,),
+                    (booking_id, "TCT-WEB-TEST", "Inquiry"),
+                    (UUID("ffffffff-ffff-4fff-8fff-ffffffffffff"),),
+                ]
+                self.executed = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, query, params=None):
+                self.executed.append((query, params))
+
+            def fetchone(self):
+                return self.rows.pop(0)
+
+        cursor = Cursor()
+
+        class Connection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def cursor(self):
+                return cursor
+
+        for phone in (None, "legacy-only"):
+            with self.subTest(phone_supplied=phone is not None):
+                cursor = Cursor()
+                request = WebsiteBookingRequest(
+                    quote_id=quote_id, date=quote_row[5], adults=1, currency="THB",
+                    customer=WebsiteCustomer(name="Guest", email="guest@example.com", phone=phone),
+                )
+                with patch.object(website.settings, "website_integration_enabled", True), patch.object(
+                    website, "_website_connection", return_value=Connection()
+                ):
+                    response = website.create_website_booking(
+                        request, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+                    )
+
+                customer_insert = next(
+                    (query, params) for query, params in cursor.executed if "INSERT INTO customers" in query
+                )
+                self.assertNotIn("phone", customer_insert[0])
+                self.assertEqual(customer_insert[1], ("Guest", "guest@example.com"))
+                self.assertEqual(response["status"], "Inquiry")
+                idempotency_insert = next(
+                    (query, params) for query, params in cursor.executed
+                    if "INSERT INTO website_booking_idempotency" in query
+                )
+                self.assertIn("created_at <= %s", idempotency_insert[0])
+                self.assertIn("created_at = now()", idempotency_insert[0])
+                self.assertIn("response_payload = NULL", idempotency_insert[0])
+                self.assertEqual(idempotency_insert[1][0], UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"))
+                cutoff = idempotency_insert[1][2]
+                self.assertIsInstance(cutoff, datetime)
+                self.assertLessEqual(cutoff, datetime.now(timezone.utc) - website.WEBSITE_BOOKING_IDEMPOTENCY_TTL)
+                self.assertGreater(cutoff, datetime.now(timezone.utc) - website.WEBSITE_BOOKING_IDEMPOTENCY_TTL - timedelta(seconds=2))
 
     def test_manager_policy_calculates_private_group_quote(self):
         request = WebsitePricingRequest(

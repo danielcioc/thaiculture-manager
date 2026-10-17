@@ -33,6 +33,8 @@ Pricing errors use `404` when no active approved rule or tour mapping exists, `4
 
 Website submissions create `source=Website`, `status=Inquiry`, a canonical tour/customer link, and a pricing quote snapshot in one transaction. A request's `Idempotency-Key` is unique. Reusing the key with the same canonical payload returns the original response; reusing it with a different payload returns `409`. A consumed quote cannot create another booking.
 
+The website inquiry form does not collect a phone number. The API accepts an optional deprecated `customer.phone` field for legacy callers, but does not persist it for newly created website customers. The legacy field remains part of the canonical idempotency payload when supplied so existing retries keep their prior hash shape. Existing customer phone data is unchanged.
+
 The key is generated in browser memory for the request and retained for retry while the form remains open. Transport failures tell the customer to retry without changing the inputs. A fresh quote is required after changing quote inputs. The API remains the final duplicate guard.
 
 ## Local execution
