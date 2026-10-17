@@ -25,6 +25,7 @@ from app.pricing_policy import POLICY_VERSION, PricingPolicyInputError, calculat
 
 router = APIRouter(prefix="/api/website", tags=["Website integration"])
 QUOTE_TTL = timedelta(minutes=30)
+WEBSITE_BOOKING_IDEMPOTENCY_TTL = timedelta(hours=24)
 SUPPORTED_CURRENCIES = frozenset({"THB", "EUR", "USD"})
 logger = logging.getLogger("app.website")
 
@@ -301,10 +302,15 @@ def create_website_booking(
             """
             INSERT INTO website_booking_idempotency (idempotency_key, payload_hash)
             VALUES (%s, %s)
-            ON CONFLICT (idempotency_key) DO NOTHING
+            ON CONFLICT (idempotency_key) DO UPDATE
+                SET payload_hash = EXCLUDED.payload_hash,
+                    booking_id = NULL,
+                    response_payload = NULL,
+                    created_at = now()
+                WHERE website_booking_idempotency.created_at <= %s
             RETURNING idempotency_key;
             """,
-            (idempotency_key, payload_hash),
+            (idempotency_key, payload_hash, now - WEBSITE_BOOKING_IDEMPOTENCY_TTL),
         )
         inserted = cur.fetchone()
         if inserted is None:

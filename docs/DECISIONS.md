@@ -67,3 +67,11 @@ When starting a new session:
 - Audit entries are append-only and have no automatic purge in v1; retain through and beyond booking deletion. Any purge requires a separately approved retention/legal policy. Audit read access requires `bookings.import_review.audit.read`; writes require `bookings.import_review.approve` and authenticated user identity.
 - A write transaction locks the booking `FOR UPDATE`, validates expected prior mapping fields, locks/rechecks the chosen tour as active, updates only mapping metadata and `tour_id`, and inserts the audit event atomically. Stale expected values return 409; any failure rolls back both changes.
 - This checkpoint adds and validates the migration only in isolated PostgreSQL. No operational schema/data, endpoint, or runtime code was changed. The trusted issuer/key provisioning path remains an implementation prerequisite.
+
+## Website inquiry and idempotency retention — confirmed 2026-10-17
+
+- Delete unconverted website inquiries (`source='Website'`, status `Inquiry`) when `bookings.created_at` is older than 30 days. Any booking that advanced beyond Inquiry is converted and excluded.
+- Keep website booking idempotency for 24 hours independently. Within the window, retries preserve current replay/conflict behavior; after expiry, reuse of the same key is a new request. Expired idempotency rows are pruned in bounded batches.
+- Delete known booking FK dependents transactionally before deleting the booking. Delete a customer only if no booking references it; shared customers remain. Generic `audit_log` remains append-only.
+- The retention script defaults to count-only preview; apply is explicit and requires a backup reference. Do not configure a scheduler against an environment until target identity, verified backup, and release approval are established. No schema change or database cleanup was performed for this decision.
+- Subsequent inquiry conversation continues by email, which is outside this Manager retention workflow.

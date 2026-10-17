@@ -7,7 +7,7 @@ Staging exposure remains **not approved** until every required field is complete
 - Proxy/hosting owner: Daniel Cioc
 - Backend owner: Daniel Cioc
 - Monitoring/alert owner: Daniel Cioc
-- Retention and cleanup owner: Daniel Cioc; Inquiry PII requires business/legal approval
+- Retention and cleanup owner: Daniel Cioc; the approved Inquiry policy is delete if unconverted after 30 days
 - DBA/backup owner: Daniel Cioc
 - Migration owner: Daniel Cioc
 - Rollback/release owner: Daniel Cioc
@@ -45,8 +45,8 @@ Because operational ownership is currently concentrated in one person, backup, m
 - CORS: empty for same-origin requests
 - `WEBSITE_INTEGRATION_ENABLED`: **false by default**; any staging activation is limited to the approved window
 - Quote retention proposal: **30 days after expiry**
-- Idempotency retention proposal: **180 days**
-- Inquiry PII retention: Pending business/legal approval
+- Website booking idempotency TTL: **24 hours**, separate from inquiry retention
+- Inquiry PII retention: **delete unconverted Website Inquiry bookings after 30 days**; subsequent email conversation is outside this Manager workflow
 
 The process-local limits are defense in depth. They do not replace the distributed proxy limits entered above.
 
@@ -72,7 +72,7 @@ The process-local limits are defense in depth. They do not replace the distribut
 - [ ] All owner and contact fields completed.
 - [ ] Proxy limits and timeouts approved.
 - [ ] Monitoring and alert routing approved.
-- [ ] Inquiry PII retention decided by the appropriate business/legal approver.
+- [x] Inquiry PII retention policy is documented per the approved 30-day decision.
 - [ ] Exposure hostname and start/end window approved.
 - [ ] Backup and migration gates passed.
 - [ ] Rollback gates reviewed.

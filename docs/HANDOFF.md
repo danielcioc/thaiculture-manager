@@ -102,4 +102,6 @@ At the next session start, read in this order:
 
 - Local backend safeguards and tests are documented in `docs/WEBSITE_PUBLIC_API_HARDENING.md`: bounded bodies, configurable process-local limits, field caps, DB timeouts, sanitized security events, and idempotency regression coverage.
 - Website integration remains disabled in staging and production. No staging, production, or database was contacted.
-- Public exposure is still gated on proxy-enforced distributed/client-aware limits and timeouts, monitoring/alert ownership, and approval of retention periods. No cleanup ran.
+- Public exposure is still gated on proxy-enforced distributed/client-aware limits and timeouts, monitoring/alert ownership, and environment provisioning. The retention policy is now approved and documented. No cleanup ran.
+- Approved policy is a 30-day deletion threshold for unconverted Website Inquiry bookings and a separate 24-hour idempotency TTL. `scripts/cleanup_website_retention.py` defaults to aggregate-only preview; explicit apply mode is transaction-per-booking and deletes known FK children first.
+- No scheduler is configured in the repository or any environment. The documented CLI entrypoints are ready for an external scheduler, but must not be scheduled against staging/production until environment provisioning, verified-backup procedures, and release approval are complete. No database was contacted or changed for implementation.

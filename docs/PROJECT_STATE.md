@@ -147,6 +147,13 @@ All 10 imported bookings are mapped to canonical tours and remain correctly link
 - A dedicated additive migration stores expiring quote previews and idempotency responses. It was applied only to the isolated local E2E database; no operational or staging database was accessed.
 - Isolated HTTP and browser validation passed: catalog, Manager quote, Inquiry submission, idempotent replay, changed-payload 409, extra rejection, booking detail, no payments, and no proforma. The backend and PostgreSQL are healthy. Keep the E2E Compose project available for Daniel's manual review; staging validation remains separate.
 
+## Website Inquiry retention — 2026-10-17
+
+- Approved policy: delete Website bookings whose operational status remains `Inquiry` when `created_at` is older than 30 days. Any booking that advanced beyond `Inquiry` is excluded. Delete the customer only after its final booking reference is removed; shared customers remain.
+- Website booking idempotency has a separate 24-hour TTL. Same-key retries inside the TTL replay as before; after expiry, the key is treated as a new request. Expired rows can be pruned in bounded batches.
+- `scripts/cleanup_website_retention.py` provides aggregate-only preview by default and explicit apply entrypoints for idempotency and inquiry cleanup. Inquiry child records are deleted in FK order, one transaction per candidate; unexpected errors roll back that candidate. Generic audit records remain append-only.
+- No schema migration was needed. No scheduler is configured, no cleanup was run, and no database/staging/production infrastructure was accessed. Do not schedule environment execution until its target, verified backup, and release approval are in place; staging Docker cleanup tooling is unrelated.
+
 ## End-to-End V1 Release Validation — 2026-10-16
 
 - Added explicit OpenAPI response models for Dashboard summary, Payments list/summary, Bookings list/full detail, and importer-review decision. Financial fields (status, total, deposit, paid, pending, balance, currency KPIs/outstanding) are documented. Extra legacy response fields remain allowed, and unset optional fields are excluded so the API does not acquire synthetic nulls.
